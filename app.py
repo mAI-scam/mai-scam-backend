@@ -11,7 +11,7 @@ config = Setting()
 
 def get_application() -> FastAPI:
     application = FastAPI(
-        title="ELZ AI API",
+        title="mAIScam API",
         debug=False,
         version="0.0.0"
     )
