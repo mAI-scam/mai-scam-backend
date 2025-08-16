@@ -171,7 +171,27 @@ async def create_token(request: TokenRequest):
 # 2. API KEY CREATION ENDPOINT
 # =============================================================================
 
-@router.post("/api-key")
+@router.post("/api-key",
+             summary="Create API Key",
+             description="""
+    Create a new API key for accessing the MAI Scam Detection API.
+    
+    **Client Types:**
+    - web_extension: Browser extension (100 req/hour)
+    - chatbot: Chatbot integration (50 req/hour)
+    - mobile_app: Mobile application (200 req/hour)
+    - api_client: Third-party API (1000 req/hour)
+    
+    **Permissions:**
+    - email_analysis: Analyze emails for scams
+    - website_analysis: Analyze websites for scams
+    - social_media_analysis: Analyze social media posts for scams
+    
+    **Security:**
+    - API key is shown only once
+    - Store securely - it cannot be retrieved later
+    """,
+             response_description="New API key with permissions and usage limits")
 async def create_api_key_endpoint(request: ApiKeyRequest):
     """
     Create an API key for client authentication.

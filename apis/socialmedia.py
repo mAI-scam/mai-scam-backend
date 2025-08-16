@@ -62,7 +62,32 @@ async def healthcheck():
 # 1. Analyze social media content
 
 
-@router.post("/analyze")
+@router.post("/analyze",
+             summary="Analyze Social Media Post for Scam Detection",
+             description="""
+    Analyze social media content for potential scam indicators using AI.
+    
+    **Supported Platforms:**
+    - Facebook
+    - Instagram
+    - Twitter/X
+    - TikTok
+    - LinkedIn
+    
+    **Features:**
+    - Platform-specific scam detection
+    - Engagement metrics analysis
+    - URL and domain analysis
+    - Author credibility assessment
+    - AI-powered risk assessment
+    
+    **Returns:**
+    - Risk level assessment
+    - Platform-specific analysis
+    - Recommended actions
+    - Content reuse indicator
+    """,
+             response_description="Social media analysis results with risk assessment")
 async def analyze_social_media_post(request: SocialMediaAnalysisRequest):
     # [Step 0] Read values from the request body
     try:

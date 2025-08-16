@@ -63,7 +63,24 @@ async def healthcheck():
 # d. Respond analysis in "target language" to user
 
 
-@router.post("/analyze")
+@router.post("/analyze",
+             summary="Analyze Email for Scam Detection",
+             description="""
+    Analyze email content for potential scam indicators using AI.
+    
+    **Features:**
+    - Language detection (English, Chinese, Malay, Thai, Vietnamese)
+    - Signal extraction (URLs, domains, keywords, metadata)
+    - AI-powered risk assessment (High/Medium/Low)
+    - Content hashing for reusability
+    
+    **Returns:**
+    - Risk level assessment
+    - Detailed analysis explanation
+    - Recommended actions
+    - Content reuse indicator
+    """,
+             response_description="Email analysis results with risk assessment")
 async def detect(request: EmailAnalysisRequest):
     # [Step 0] Read values from the request body
     try:
@@ -137,7 +154,24 @@ async def detect(request: EmailAnalysisRequest):
 # a. Retrieve email_id
 # b. Map to database and retrieve analysis in base language
 # c. Perform translation
-@router.post("/translate")
+@router.post("/translate",
+             summary="Translate Email Analysis",
+             description="""
+    Translate email analysis results to different languages.
+    
+    **Features:**
+    - Multi-language translation support
+    - Preserves original analysis accuracy
+    - Maintains risk assessment integrity
+    
+    **Supported Languages:**
+    - English (en)
+    - Chinese (zh)
+    - Malay (ms)
+    - Thai (th)
+    - Vietnamese (vi)
+    """,
+             response_description="Translated email analysis results")
 async def translate(request: EmailTranslationRequest):
     # [Step 0] Read values from the request body
     try:

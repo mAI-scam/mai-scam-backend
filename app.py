@@ -48,10 +48,20 @@ def setup_middleware(app: FastAPI) -> None:
     Args:
         app: FastAPI application instance
     """
-    # Add security middleware
-    app.add_middleware(SecurityHeadersMiddleware)
-    app.add_middleware(ErrorHandlingMiddleware)
+    # Add trusted host middleware for production (first)
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=["localhost", "127.0.0.1", "your-domain.com", "*"]
+    )
+
+    # Configure CORS (early)
+    configure_cors(app)
+
+    # Add logging middleware (early)
     app.add_middleware(LoggingMiddleware)
+
+    # Add error handling middleware (early)
+    app.add_middleware(ErrorHandlingMiddleware)
 
     # Add authentication middleware (applies to all routes)
     app.add_middleware(AuthMiddleware)
@@ -59,14 +69,8 @@ def setup_middleware(app: FastAPI) -> None:
     # Add rate limiting middleware
     app.add_middleware(RateLimitMiddleware)
 
-    # Configure CORS
-    configure_cors(app)
-
-    # Add trusted host middleware for production
-    app.add_middleware(
-        TrustedHostMiddleware,
-        allowed_hosts=["localhost", "127.0.0.1", "your-domain.com"]
-    )
+    # Add security headers middleware (last)
+    app.add_middleware(SecurityHeadersMiddleware)
 
 
 def get_application() -> FastAPI:

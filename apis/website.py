@@ -61,7 +61,31 @@ async def healthcheck():
 # 1. Analyze website content
 
 
-@router.post("/analyze")
+@router.post("/analyze",
+             summary="Analyze Website for Scam Detection",
+             description="""
+    Analyze website content for potential scam indicators using AI.
+    
+    **Features:**
+    - URL and domain analysis
+    - Content text analysis
+    - Screenshot analysis (if provided)
+    - SSL and security metadata
+    - AI-powered risk assessment
+    
+    **Input Options:**
+    - URL only (basic analysis)
+    - URL + title + content (enhanced analysis)
+    - URL + screenshot (visual analysis)
+    - Full metadata (comprehensive analysis)
+    
+    **Returns:**
+    - Risk level assessment
+    - Detailed analysis explanation
+    - Recommended actions
+    - Content reuse indicator
+    """,
+             response_description="Website analysis results with risk assessment")
 async def analyze_website(request: WebsiteAnalysisRequest):
     # [Step 0] Read values from the request body
     try:

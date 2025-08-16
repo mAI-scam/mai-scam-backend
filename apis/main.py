@@ -37,6 +37,7 @@ import json
 import base64
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
 
 config = Setting()
 
@@ -385,3 +386,292 @@ async def ocr_upload(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error during OCR upload processing: {str(e)}")
+
+
+@router.get("/docs/api-overview",
+            summary="Complete API Documentation",
+            description="Comprehensive overview of all MAI Scam Detection API endpoints",
+            response_description="Complete API documentation in markdown format")
+async def get_api_documentation():
+    """
+    Return comprehensive API documentation for the MAI Scam Detection System.
+    """
+    documentation = """
+# MAI Scam Detection API Documentation
+
+## Overview
+The MAI Scam Detection API provides AI-powered scam detection for emails, websites, and social media content. The API supports multiple languages and provides detailed risk assessments.
+
+## Authentication
+All endpoints require authentication using either:
+- **JWT Token**: `Authorization: Bearer <token>`
+- **API Key**: `X-API-Key: <api_key>`
+
+## Base URL
+```
+https://your-domain.com
+```
+
+## Rate Limits
+- **Web Extension**: 100 requests/hour
+- **Chatbot**: 50 requests/hour  
+- **Mobile App**: 200 requests/hour
+- **API Client**: 1000 requests/hour
+
+---
+
+## 🔍 Email Analysis
+
+### Analyze Email
+**POST** `/email/analyze`
+
+Analyze email content for potential scam indicators.
+
+**Request Body:**
+```json
+{
+  "subject": "URGENT: Your account has been suspended",
+  "content": "Dear valued customer...",
+  "from_email": "security@bank.com",
+  "reply_to_email": "support@bank.com",
+  "target_language": "en"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "email_id": "507f1f77bcf86cd799439011",
+    "en": {
+      "risk_level": "high",
+      "analysis": "This email shows clear phishing indicators...",
+      "recommended_action": "Do not click any links or provide personal information."
+    },
+    "reused": false
+  }
+}
+```
+
+### Translate Email Analysis
+**POST** `/email/translate`
+
+Translate email analysis to different languages.
+
+**Request Body:**
+```json
+{
+  "email_id": "507f1f77bcf86cd799439011",
+  "target_language": "zh"
+}
+```
+
+---
+
+## 🌐 Website Analysis
+
+### Analyze Website
+**POST** `/website/analyze`
+
+Analyze website content for potential scam indicators.
+
+**Request Body:**
+```json
+{
+  "url": "https://example.com/login",
+  "title": "Login - Example Bank",
+  "content": "Please enter your credentials...",
+  "target_language": "en",
+  "screenshot_data": "base64_encoded_image",
+  "metadata": {
+    "ssl_valid": true,
+    "domain_age_days": 30
+  }
+}
+```
+
+### Translate Website Analysis
+**POST** `/website/translate`
+
+Translate website analysis to different languages.
+
+---
+
+## 📱 Social Media Analysis
+
+### Analyze Social Media Post
+**POST** `/socialmedia/analyze`
+
+Analyze social media content for potential scam indicators.
+
+**Request Body:**
+```json
+{
+  "platform": "facebook",
+  "content": "Win a free iPhone! Click here...",
+  "author_username": "user123",
+  "post_url": "https://facebook.com/post/123",
+  "author_followers_count": 1000,
+  "engagement_metrics": {
+    "likes": 50,
+    "comments": 10,
+    "shares": 5
+  },
+  "target_language": "en"
+}
+```
+
+### Translate Social Media Analysis
+**POST** `/socialmedia/translate`
+
+Translate social media analysis to different languages.
+
+---
+
+## 🔑 Authentication
+
+### Create API Key
+**POST** `/auth/api-key`
+
+Create a new API key for accessing the API.
+
+**Request Body:**
+```json
+{
+  "client_id": "my_web_extension",
+  "client_type": "web_extension",
+  "description": "My Web Extension API Key"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "api_key": "mai_afbfdf24dc4cae6433995e1e6e6a2623fef7a0540c7012e543aacd1e7a1a4709",
+    "client_id": "my_web_extension",
+    "client_type": "web_extension",
+    "permissions": ["email_analysis", "website_analysis", "social_media_analysis"],
+    "description": "My Web Extension API Key",
+    "created_at": "2025-08-16T16:40:51.957149",
+    "warning": "Store this API key securely. It will not be shown again."
+  }
+}
+```
+
+### Get JWT Token
+**POST** `/auth/token`
+
+Get a JWT token using your API key.
+
+**Headers:**
+```
+X-API-Key: mai_your_api_key_here
+```
+
+### Verify Authentication
+**GET** `/auth/verify`
+
+Verify your authentication status.
+
+**Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+---
+
+## 🌍 Supported Languages
+- **English** (en)
+- **Chinese** (zh)
+- **Malay** (ms)
+- **Thai** (th)
+- **Vietnamese** (vi)
+
+## 📊 Response Format
+All responses follow this standard format:
+```json
+{
+  "success": true,
+  "message": "Operation completed successfully",
+  "data": {
+    // Response data here
+  },
+  "timestamp": "2025-08-16T16:40:51.957169",
+  "status_code": 200
+}
+```
+
+## 🚨 Error Responses
+```json
+{
+  "success": false,
+  "error_code": "AUTHENTICATION_REQUIRED",
+  "message": "Authentication required. Provide either JWT token or API key.",
+  "timestamp": "2025-08-16T16:40:51.957169",
+  "status_code": 401
+}
+```
+
+## 🔗 Interactive Documentation
+- **Swagger UI**: `/docs`
+- **ReDoc**: `/redoc`
+- **OpenAPI JSON**: `/openapi.json`
+
+---
+
+## 🛠️ Quick Start
+
+1. **Create API Key:**
+   ```bash
+   curl -X POST "https://your-domain.com/auth/api-key" \\
+        -H "Content-Type: application/json" \\
+        -d '{
+          "client_id": "my_app",
+          "client_type": "web_extension",
+          "description": "My Application"
+        }'
+   ```
+
+2. **Analyze Email:**
+   ```bash
+   curl -X POST "https://your-domain.com/email/analyze" \\
+        -H "X-API-Key: mai_your_api_key_here" \\
+        -H "Content-Type: application/json" \\
+        -d '{
+          "subject": "URGENT: Account Suspended",
+          "content": "Your account has been suspended...",
+          "from_email": "security@bank.com",
+          "target_language": "en"
+        }'
+   ```
+
+3. **Analyze Website:**
+   ```bash
+   curl -X POST "https://your-domain.com/website/analyze" \\
+        -H "X-API-Key: mai_your_api_key_here" \\
+        -H "Content-Type: application/json" \\
+        -d '{
+          "url": "https://example.com/login",
+          "target_language": "en"
+        }'
+   ```
+
+---
+
+*For more detailed information, visit the interactive documentation at `/docs`*
+"""
+
+    return {
+        "success": True,
+        "message": "API documentation retrieved successfully",
+        "data": {
+            "documentation": documentation,
+            "version": "1.0.0",
+            "last_updated": "2025-08-16"
+        },
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "status_code": 200
+    }
