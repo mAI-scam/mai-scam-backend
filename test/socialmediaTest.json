@@ -1,0 +1,81 @@
+{
+  "analyze": {
+    "1": {
+      "datetime_created": "2025-08-16T14:30:00Z",
+      "body": {
+        "platform": "facebook",
+        "content": "🎉 CONGRATULATIONS! You've been selected for our exclusive giveaway! Win an iPhone 15 Pro Max, MacBook Pro, and $10,000 cash! Click here to claim your prize now: https://bit.ly/free-iphone-giveaway Limited time only! Share this post to increase your chances! #giveaway #free #iphone #winner",
+        "author_username": "AppleOfficial_Giveaway",
+        "target_language": "en",
+        "post_url": "https://facebook.com/post/123456789",
+        "author_followers_count": 50000,
+        "engagement_metrics": {
+          "likes": 1200,
+          "comments": 450,
+          "shares": 300,
+          "views": 15000
+        }
+      },
+      "ground_truth_risk": "high"
+    },
+    "2": {
+      "datetime_created": "2025-08-16T14:30:00Z",
+      "body": {
+        "platform": "linkedin",
+        "content": "URGENT: Hiring 10 remote software developers! $150K salary + benefits. Must start immediately. Send your resume to hiring@tech-startup.xyz. No experience required, we provide training. This is a limited-time opportunity! #hiring #remote #software #developer #job",
+        "author_username": "TechStartup_HR",
+        "target_language": "en",
+        "post_url": "https://linkedin.com/posts/techstartup_123",
+        "author_followers_count": 500,
+        "engagement_metrics": {
+          "likes": 50,
+          "comments": 15,
+          "shares": 8,
+          "views": 800
+        }
+      },
+      "ground_truth_risk": "medium"
+    },
+    "3": {
+      "datetime_created": "2025-08-16T14:30:00Z",
+      "body": {
+        "platform": "instagram",
+        "content": "Just had an amazing dinner at the new restaurant downtown! The food was incredible and the atmosphere was perfect. Highly recommend trying their signature dish. #foodie #dinner #restaurant #delicious #foodphotography",
+        "author_username": "food_lover_123",
+        "target_language": "zh",
+        "post_url": "https://instagram.com/p/ABC123",
+        "author_followers_count": 2500,
+        "engagement_metrics": {
+          "likes": 180,
+          "comments": 25,
+          "shares": 5,
+          "views": 1200
+        }
+      },
+      "ground_truth_risk": "low"
+    }
+  },
+  "translate": {
+    "1": {
+      "datetime_created": "2025-08-16T14:30:00Z",
+      "body": {
+        "post_id": "sample_post_id_123",
+        "target_language": "zh"
+      }
+    },
+    "2": {
+      "datetime_created": "2025-08-16T14:30:00Z",
+      "body": {
+        "post_id": "sample_post_id_456",
+        "target_language": "ms"
+      }
+    },
+    "3": {
+      "datetime_created": "2025-08-16T14:30:00Z",
+      "body": {
+        "post_id": "sample_post_id_789",
+        "target_language": "vi"
+      }
+    }
+  }
+}

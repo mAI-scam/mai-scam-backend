@@ -1,0 +1,60 @@
+{
+  "analyze": {
+    "1": {
+      "datetime_created": "2025-08-16T14:30:00Z",
+      "body": {
+        "subject": "URGENT: Your account has been suspended",
+        "content": "Dear valued customer, your account has been suspended due to suspicious activity. Please click the link below to verify your identity and restore access immediately. Failure to do so within 24 hours will result in permanent account closure. https://bit.ly/verify-account-now",
+        "from_email": "security@bankofamerica-secure.com",
+        "target_language": "en",
+        "reply_to_email": "support@bankofamerica-secure.com"
+      },
+      "ground_truth_risk": "high"
+    },
+    "2": {
+      "datetime_created": "2025-08-16T14:30:00Z",
+      "body": {
+        "subject": "Investment opportunity - 500% returns guaranteed",
+        "content": "Hello! I have an exclusive investment opportunity for you. We are offering 500% returns on cryptocurrency investments within 30 days. This is a limited-time offer. Please transfer your funds to our secure wallet: 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa. Don't miss this chance to become wealthy!",
+        "from_email": "investor@crypto-wealth.xyz",
+        "target_language": "ms",
+        "reply_to_email": "support@crypto-wealth.xyz"
+      },
+      "ground_truth_risk": "medium"
+    },
+    "3": {
+      "datetime_created": "2025-08-16T14:30:00Z",
+      "body": {
+        "subject": "Meeting tomorrow at 2 PM",
+        "content": "Hi team, just a reminder that we have our weekly meeting tomorrow at 2 PM. Please prepare your updates and join the Zoom call. The agenda includes project updates and Q&A session. Looking forward to seeing everyone there!",
+        "from_email": "manager@company.com",
+        "target_language": "zh",
+        "reply_to_email": null
+      },
+      "ground_truth_risk": "low"
+    }
+  },
+  "translate": {
+    "1": {
+      "datetime_created": "2025-08-16T14:30:00Z",
+      "body": {
+        "email_id": "sample_email_id_123",
+        "target_language": "zh"
+      }
+    },
+    "2": {
+      "datetime_created": "2025-08-16T14:30:00Z",
+      "body": {
+        "email_id": "sample_email_id_456",
+        "target_language": "ms"
+      }
+    },
+    "3": {
+      "datetime_created": "2025-08-16T14:30:00Z",
+      "body": {
+        "email_id": "sample_email_id_789",
+        "target_language": "vi"
+      }
+    }
+  }
+}

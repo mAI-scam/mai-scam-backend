@@ -42,6 +42,10 @@ LANGUAGE: {language}
 TITLE: {title}
 CONTENT: {content}
 
+[AUXILIARY SIGNALS]
+The following JSON contains machine-extracted artifacts and heuristics. Use them to improve precision. Do not blindly trust; reconcile with CONTENT.
+{aux_signals}
+
 [HOW TO EVALUATE]
 Consider red flags: urgent/threatening tone, requests for credentials/OTP/payment, links to suspicious domains, look-alike brands, from↔reply-to mismatch, unexpected attachments, poor grammar, unusual sender context, cryptocurrency or gift-card requests, account suspension warnings, spoofed login pages, shortened URLs.
 
