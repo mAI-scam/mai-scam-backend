@@ -1,105 +1,190 @@
 """
-Centralized constants for the MAI Scam Detection System.
+Constants for MAI Scam Detection System
 
-This file contains all reusable constants across the utility modules,
-allowing for centralized configuration and easy maintenance.
+This module contains all centralized constants used throughout the application.
+All constants are in capital letters for easy identification.
+
+TABLE OF CONTENTS:
+==================
+
+CONSTANT SECTIONS:
+-----------------
+1. LANGUAGES - Supported languages for analysis
+2. REGEX PATTERNS - Common regex patterns for text extraction
+3. SUSPICIOUS INDICATORS - Domains, TLDs, and keywords for scam detection
+4. KEYWORDS - Scam-related keywords for each use case
+5. THRESHOLDS - Various thresholds and limits
+6. AUTHENTICATION - JWT and API key configuration
+7. HASHING - Hashing algorithm configuration
+
+USAGE EXAMPLES:
+--------------
+from utils.constant import EMAIL_KEYWORDS, URL_PATTERN, CLIENT_TYPES
+
+# Use constants in your code
+if any(keyword in text.lower() for keyword in EMAIL_KEYWORDS["urgency"]):
+    print("Urgency scam detected")
 """
 
+import os
+from setting import Setting
+
+# Load configuration
+config = Setting()
+
 # =============================================================================
-# LANGUAGE SUPPORT
+# LANGUAGE CONSTANTS
 # =============================================================================
-LANGUAGES = ["en", "ms", "zh", "vi", "th", "fil",
-             "id", "jv", "su", "km", "lo", "my", "ta"]
+
+LANGUAGES = ["en", "zh", "ms", "th", "vi"]
 
 # =============================================================================
 # REGEX PATTERNS
 # =============================================================================
-URL_PATTERN = r"https?://[\w\-._~:/?#\[\]@!$&'()*+,;=%]+"
-EMAIL_PATTERN = r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"
-PHONE_PATTERN = r"(?:(?:\+\d{1,3}[\s-]?)?(?:\(?\d{2,4}\)?[\s-]?)?\d{3,4}[\s-]?\d{3,4})"
-HASHTAG_PATTERN = r"#[\w\u4e00-\u9fff]+"
-MENTION_PATTERN = r"@[\w\u4e00-\u9fff]+"
+
+URL_PATTERN = r'https?://(?:[-\w.])+(?:[:\d]+)?(?:/(?:[\w/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?'
+EMAIL_PATTERN = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+PHONE_PATTERN = r'\+?[\d\s\-\(\)]{7,}'
+HASHTAG_PATTERN = r'#\w+'
+MENTION_PATTERN = r'@\w+'
 
 # =============================================================================
 # SUSPICIOUS DOMAINS AND TLDs
 # =============================================================================
-SUSPICIOUS_TLDS = {
-    "zip", "mov", "xyz", "top", "click", "country",
-    "gq", "cn", "ru"
-}
 
-URL_SHORTENERS = {
-    "bit.ly", "t.co", "goo.gl", "tinyurl.com",
-    "ow.ly", "is.gd"
-}
+SUSPICIOUS_TLDS = [".tk", ".ml", ".ga", ".cf",
+                   ".gq", ".xyz", ".top", ".club", ".online"]
+URL_SHORTENERS = ["bit.ly", "tinyurl.com",
+                  "goo.gl", "t.co", "is.gd", "v.gd", "ow.ly"]
 
 # =============================================================================
-# KNOWN BRANDS FOR LOOKALIKE DETECTION
+# KNOWN BRANDS (for lookalike detection)
 # =============================================================================
+
 KNOWN_BRANDS = [
-    "google", "facebook", "amazon", "apple", "microsoft", "netflix",
-    "paypal", "ebay", "alibaba", "tencent", "baidu", "yahoo"
+    "google", "facebook", "amazon", "apple", "microsoft", "netflix", "paypal",
+    "ebay", "linkedin", "twitter", "instagram", "whatsapp", "telegram",
+    "spotify", "youtube", "discord", "slack", "zoom", "dropbox", "github"
 ]
 
 # =============================================================================
-# KEYWORD CATEGORIES FOR SCAM DETECTION
+# EMAIL ANALYSIS KEYWORDS
 # =============================================================================
 
-# Email-specific keywords
 EMAIL_KEYWORDS = {
-    "otp_request": ["otp", "one-time password", "verification code", "6-digit code"],
-    "credential_request": ["password", "login", "account details", "pin"],
-    "payment_request": ["transfer", "bank", "wire", "crypto", "gift card", "bitcoin", "usdt", "wallet"],
-    "urgency": ["urgent", "immediately", "asap", "deadline", "suspend", "suspension", "24 hours", "48 hours"],
-    "attachment_mention": ["attached", "attachment", ".pdf", ".zip", ".doc", ".xls"]
+    "urgency": [
+        "urgent", "immediate", "limited time", "act now", "expires soon",
+        "urgent action required", "account suspended", "account locked"
+    ],
+    "financial": [
+        "bank transfer", "wire transfer", "payment pending", "refund available",
+        "free money", "cash prize", "gift card", "voucher", "discount code"
+    ],
+    "prizes": [
+        "claim your prize", "you've won", "congratulations", "lottery", "inheritance"
+    ],
+    "security": [
+        "verify your account", "security alert", "unusual activity", "login attempt",
+        "password reset"
+    ]
 }
 
-# Social media-specific keywords
+# =============================================================================
+# SOCIAL MEDIA ANALYSIS KEYWORDS
+# =============================================================================
+
 SOCIAL_MEDIA_KEYWORDS = {
-    "giveaway_mention": ["giveaway", "free", "win", "prize", "contest", "lucky"],
-    "investment_mention": ["investment", "profit", "earn", "money", "crypto", "bitcoin", "trading"],
-    "urgency_mention": ["urgent", "limited time", "last chance", "hurry", "asap", "deadline"],
-    "romance_scam": ["love", "relationship", "marriage", "dating", "romance"],
-    "impersonation": ["official", "verified", "celeb", "celebrity", "brand"],
-    "suspicious_contact": ["whatsapp", "telegram", "dm", "direct message", "private message"]
+    "engagement": [
+        "follow for follow", "like for like", "comment for comment",
+        "free followers", "get verified", "blue badge", "viral post"
+    ],
+    "trending": [
+        "trending", "going viral", "share to win", "tag friends"
+    ],
+    "offers": [
+        "limited offer", "exclusive deal", "private account", "premium content"
+    ],
+    "financial": [
+        "crypto giveaway", "bitcoin", "ethereum", "investment opportunity",
+        "quick money", "earn from home", "work from home", "side hustle"
+    ]
 }
 
-# Website-specific keywords
+# =============================================================================
+# WEBSITE ANALYSIS KEYWORDS
+# =============================================================================
+
 WEBSITE_KEYWORDS = {
-    "login_form": ["login", "sign in", "password", "username", "account"],
-    "payment_form": ["payment", "credit card", "bank", "transfer", "wire"],
-    "urgency_tactics": ["urgent", "limited time", "last chance", "hurry", "asap", "deadline", "suspend"],
-    "authority_impersonation": ["government", "official", "bank", "police", "irs", "tax"],
-    "investment_scam": ["investment", "profit", "earn", "money", "crypto", "bitcoin", "trading"],
-    "tech_support": ["tech support", "computer", "virus", "microsoft", "apple support"],
-    "lottery_winner": ["lottery", "winner", "prize", "claim", "million"],
-    "romance_scam": ["love", "relationship", "marriage", "dating", "romance"],
-    "suspicious_contact": ["whatsapp", "telegram", "dm", "direct message"]
+    "authentication": [
+        "login", "sign in", "verify", "secure", "account", "password"
+    ],
+    "financial": [
+        "credit card", "banking", "payment", "checkout", "order"
+    ],
+    "urgency": [
+        "limited time", "act now", "exclusive", "discount", "sale"
+    ],
+    "subscription": [
+        "free trial", "subscription", "membership", "premium", "upgrade"
+    ],
+    "security": [
+        "download", "install", "update", "scan", "virus", "malware"
+    ]
 }
 
 # =============================================================================
-# ENGAGEMENT THRESHOLDS
+# THRESHOLDS AND LIMITS
 # =============================================================================
-LOW_ENGAGEMENT_RATE_THRESHOLD = 0.01  # Less than 1%
-HIGH_ENGAGEMENT_RATE_THRESHOLD = 0.1  # More than 10%
 
-# =============================================================================
-# DOMAIN AGE THRESHOLDS
-# =============================================================================
+LOW_ENGAGEMENT_RATE_THRESHOLD = 0.01  # 1%
+HIGH_ENGAGEMENT_RATE_THRESHOLD = 0.1  # 10%
 NEW_DOMAIN_THRESHOLD_DAYS = 30
-
-# =============================================================================
-# PHONE NUMBER VALIDATION
-# =============================================================================
 MIN_PHONE_LENGTH = 7
-
-# =============================================================================
-# DOMAIN PATTERN THRESHOLDS
-# =============================================================================
-MAX_HYPHENS_IN_DOMAIN = 2
-RANDOM_SUBDOMAIN_PATTERN = r'[a-f0-9]{8,}'
-
-# =============================================================================
-# SUSPICIOUS PATH PATTERNS
-# =============================================================================
+MAX_HYPHENS_IN_DOMAIN = 3
+RANDOM_SUBDOMAIN_PATTERN = r'[a-z0-9]{8,}'
 SUSPICIOUS_PATH_KEYWORDS = ["login", "secure", "verify", "confirm"]
+
+# =============================================================================
+# AUTHENTICATION CONSTANTS
+# =============================================================================
+
+# JWT Configuration
+JWT_SECRET_KEY = config.get(
+    "JWT_SECRET_KEY", "your-super-secret-jwt-key-change-in-production")
+JWT_ALGORITHM = config.get("JWT_ALGORITHM", "HS256")
+JWT_EXPIRY_HOURS = config.get("JWT_EXPIRY_HOURS", 24)
+
+# API Key Configuration
+API_KEY_LENGTH = config.get("API_KEY_LENGTH", 32)
+API_KEY_PREFIX = config.get("API_KEY_PREFIX", "mai_")
+
+# Client Types and Permissions
+CLIENT_TYPES = {
+    "web_extension": {
+        "permissions": ["email_analysis", "website_analysis", "social_media_analysis"],
+        "rate_limit": 100,  # requests per hour
+        "description": "Web browser extension for real-time scam detection"
+    },
+    "chatbot": {
+        "permissions": ["email_analysis"],
+        "rate_limit": 50,  # requests per hour
+        "description": "Chatbot integration for email analysis"
+    },
+    "mobile_app": {
+        "permissions": ["email_analysis", "website_analysis", "social_media_analysis"],
+        "rate_limit": 200,  # requests per hour
+        "description": "Mobile application for scam detection"
+    },
+    "api_client": {
+        "permissions": ["email_analysis", "website_analysis", "social_media_analysis"],
+        "rate_limit": 1000,  # requests per hour
+        "description": "Third-party API client"
+    }
+}
+
+# =============================================================================
+# HASHING CONSTANTS
+# =============================================================================
+
+HASH_ALGORITHM = "sha256"
+HASH_LENGTH = 64

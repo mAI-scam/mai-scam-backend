@@ -12,7 +12,7 @@ from utils.dbUtils import create_content_hash, save_analysis_to_db, retrieve_ana
 
 config = Setting()
 
-router = APIRouter()
+router = APIRouter(prefix="/website", tags=["Website Analysis"])
 
 # Request and Response models
 
@@ -62,7 +62,7 @@ async def healthcheck():
 
 
 @router.post("/analyze")
-async def analyze_website(request: WebsiteAnalysisRequest) -> WebsiteAnalysisResponse:
+async def analyze_website(request: WebsiteAnalysisRequest):
     # [Step 0] Read values from the request body
     try:
         url = request.url
@@ -151,7 +151,7 @@ async def analyze_website(request: WebsiteAnalysisRequest) -> WebsiteAnalysisRes
 
 
 @router.post("/translate")
-async def translate_website_analysis(request: WebsiteTranslationRequest) -> WebsiteTranslationResponse:
+async def translate_website_analysis(request: WebsiteTranslationRequest):
     # [Step 0] Read values from the request body
     try:
         website_id = request.website_id

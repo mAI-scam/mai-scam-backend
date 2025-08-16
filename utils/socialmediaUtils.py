@@ -265,24 +265,24 @@ def extract_social_media_signals(platform: str, content: str, author_username: s
     # Platform-specific risk patterns
     platform_risks = {
         "facebook": {
-            "fake_giveaway": keywords["giveaway_mention"] and has_shortened,
-            "impersonation": keywords["impersonation"] and not author_username.startswith("verified"),
+            "fake_giveaway": keywords["financial"] and has_shortened,
+            "impersonation": keywords["engagement"] and not author_username.startswith("verified"),
         },
         "instagram": {
-            "fake_giveaway": keywords["giveaway_mention"] and has_shortened,
-            "suspicious_promotion": keywords["investment_mention"] and has_suspicious_tld,
+            "fake_giveaway": keywords["financial"] and has_shortened,
+            "suspicious_promotion": keywords["financial"] and has_suspicious_tld,
         },
         "twitter": {
-            "fake_news": keywords["impersonation"] and has_shortened,
-            "crypto_scam": keywords["investment_mention"] and "crypto" in lowered,
+            "fake_news": keywords["engagement"] and has_shortened,
+            "crypto_scam": keywords["financial"] and "crypto" in lowered,
         },
         "tiktok": {
-            "fake_challenge": keywords["giveaway_mention"] and keywords["urgency_mention"],
-            "suspicious_promotion": keywords["investment_mention"] and has_suspicious_tld,
+            "fake_challenge": keywords["financial"] and keywords["trending"],
+            "suspicious_promotion": keywords["financial"] and has_suspicious_tld,
         },
         "linkedin": {
-            "fake_job": keywords["investment_mention"] and keywords["urgency_mention"],
-            "business_scam": keywords["investment_mention"] and has_suspicious_tld,
+            "fake_job": keywords["financial"] and keywords["trending"],
+            "business_scam": keywords["financial"] and has_suspicious_tld,
         }
     }
 

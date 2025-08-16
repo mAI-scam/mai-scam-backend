@@ -12,7 +12,7 @@ from utils.dbUtils import create_content_hash, save_analysis_to_db, retrieve_ana
 
 config = Setting()
 
-router = APIRouter()
+router = APIRouter(prefix="/email", tags=["Email Analysis"])
 
 # Request and Response models
 
@@ -64,7 +64,7 @@ async def healthcheck():
 
 
 @router.post("/analyze")
-async def detect(request: EmailAnalysisRequest) -> EmailAnalysisResponse:
+async def detect(request: EmailAnalysisRequest):
     # [Step 0] Read values from the request body
     try:
         subject = request.subject
@@ -138,7 +138,7 @@ async def detect(request: EmailAnalysisRequest) -> EmailAnalysisResponse:
 # b. Map to database and retrieve analysis in base language
 # c. Perform translation
 @router.post("/translate")
-async def translate(request: EmailTranslationRequest) -> EmailTranslationResponse:
+async def translate(request: EmailTranslationRequest):
     # [Step 0] Read values from the request body
     try:
         email_id = request.email_id

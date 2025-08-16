@@ -12,7 +12,7 @@ from utils.dbUtils import create_content_hash, save_analysis_to_db, retrieve_ana
 
 config = Setting()
 
-router = APIRouter()
+router = APIRouter(prefix="/socialmedia", tags=["Social Media Analysis"])
 
 # Request and Response models
 
@@ -63,7 +63,7 @@ async def healthcheck():
 
 
 @router.post("/analyze")
-async def analyze_social_media_post(request: SocialMediaAnalysisRequest) -> SocialMediaAnalysisResponse:
+async def analyze_social_media_post(request: SocialMediaAnalysisRequest):
     # [Step 0] Read values from the request body
     try:
         platform = request.platform
@@ -152,7 +152,7 @@ async def analyze_social_media_post(request: SocialMediaAnalysisRequest) -> Soci
 
 
 @router.post("/translate")
-async def translate_social_media_analysis(request: SocialMediaTranslationRequest) -> SocialMediaTranslationResponse:
+async def translate_social_media_analysis(request: SocialMediaTranslationRequest):
     # [Step 0] Read values from the request body
     try:
         post_id = request.post_id
