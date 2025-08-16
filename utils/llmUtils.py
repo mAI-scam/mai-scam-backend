@@ -9,13 +9,8 @@ TABLE OF CONTENTS:
 
 EXPORTED FUNCTIONS:
 ------------------
-1. parse_sealion_json(resp) -> dict
-   - Extracts and parses JSON from Sea Lion LLM responses
-   - Handles multiple JSON formats (plain, fenced blocks, balanced braces)
-
-2. call_sea_lion_llm(prompt, model, thinking_mode, cache) -> completion
-   - Centralized function to call Sea Lion LLM with configurable parameters
-   - Supports custom model, thinking mode, and caching settings
+1. call_sea_lion_llm
+2. parse_sealion_json
 
 USAGE EXAMPLES:
 --------------
@@ -38,6 +33,65 @@ import json
 import re
 from models.clients import get_sea_lion_client
 
+
+# =============================================================================
+# 1. LLM INTERACTION FUNCTION
+# =============================================================================
+
+async def call_sea_lion_llm(
+    prompt: str,
+    model: str = "aisingapore/Llama-SEA-LION-v3.5-70B-R",
+    thinking_mode: str = "off",
+    cache: bool = False
+):
+    """
+    Centralized function to call Sea Lion LLM with configurable parameters.
+
+    This function provides a unified interface for all LLM calls across the system,
+    with sensible defaults and the ability to customize model, thinking mode, and caching.
+
+    Args:
+        prompt: The prompt to send to the LLM (required)
+        model: The model to use (default: "aisingapore/Llama-SEA-LION-v3.5-70B-R")
+        thinking_mode: Thinking mode setting - "on" or "off" (default: "off")
+        cache: Whether to enable caching (default: False)
+
+    Returns:
+        The LLM completion response object
+
+    Example:
+        completion = await call_sea_lion_llm(
+            prompt="Analyze this email for scam indicators",
+            thinking_mode="off",
+            cache=False
+        )
+    """
+    client = get_sea_lion_client()
+
+    completion = client.chat.completions.create(
+        model=model,
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        extra_body={
+            "chat_template_kwargs": {
+                "thinking_mode": thinking_mode
+            },
+            "cache": {
+                "no-cache": not cache
+            }
+        },
+    )
+
+    return completion
+
+
+# =============================================================================
+# 2. RESPONSE PARSING FUNCTION
+# =============================================================================
 
 def parse_sealion_json(resp):
     """
@@ -90,54 +144,3 @@ def parse_sealion_json(resp):
         raise ValueError("Unbalanced JSON braces in LLM output")
 
     return json.loads(content[start:end])
-
-
-async def call_sea_lion_llm(
-    prompt: str,
-    model: str = "aisingapore/Llama-SEA-LION-v3.5-70B-R",
-    thinking_mode: str = "off",
-    cache: bool = False
-):
-    """
-    Centralized function to call Sea Lion LLM with configurable parameters.
-
-    This function provides a unified interface for all LLM calls across the system,
-    with sensible defaults and the ability to customize model, thinking mode, and caching.
-
-    Args:
-        prompt: The prompt to send to the LLM (required)
-        model: The model to use (default: "aisingapore/Llama-SEA-LION-v3.5-70B-R")
-        thinking_mode: Thinking mode setting - "on" or "off" (default: "off")
-        cache: Whether to enable caching (default: False)
-
-    Returns:
-        The LLM completion response object
-
-    Example:
-        completion = await call_sea_lion_llm(
-            prompt="Analyze this email for scam indicators",
-            thinking_mode="off",
-            cache=False
-        )
-    """
-    client = get_sea_lion_client()
-
-    completion = client.chat.completions.create(
-        model=model,
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        extra_body={
-            "chat_template_kwargs": {
-                "thinking_mode": thinking_mode
-            },
-            "cache": {
-                "no-cache": not cache
-            }
-        },
-    )
-
-    return completion

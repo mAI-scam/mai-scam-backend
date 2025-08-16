@@ -9,21 +9,10 @@ TABLE OF CONTENTS:
 
 EXPORTED FUNCTIONS:
 ------------------
-1. detect_language(content) -> str
-   - Detects the base language of website content using LLM
-   - Returns language code (e.g., "en", "zh", "ms")
-
-2. extract_website_signals(url, title, content, screenshot_data, metadata) -> dict
-   - Extracts auxiliary signals from website content for scam detection
-   - Returns structured signal data including domain analysis, SSL info, and form detection
-
-3. analyze_website_content(url, title, content, base_language, signals) -> dict
-   - Performs comprehensive website analysis using LLM
-   - Returns risk assessment with reasons and recommended actions
-
-4. translate_analysis(base_language_analysis, base_language, target_language) -> dict
-   - Translates analysis results to target language
-   - Returns translated risk assessment and recommendations
+1. detect_language
+2. extract_website_signals
+3. analyze_website_content
+4. translate_analysis
 
 USAGE EXAMPLES:
 --------------
@@ -69,33 +58,9 @@ import json
 from urllib.parse import urlparse
 
 
-async def detect_language(content: str) -> str:
-    """
-    Detect the base language of website content using LLM.
-
-    This function uses the Sea Lion LLM to identify the primary language
-    of the website content from a predefined list of supported languages.
-
-    Args:
-        content: The website content to analyze
-
-    Returns:
-        str: Language code (e.g., "en", "zh", "ms")
-
-    Example:
-        language = await detect_language("Welcome to our secure banking portal")
-        # Returns: "en"
-    """
-    prompt = prompts["detectLanguage"].format(
-        available_languages=str(", ".join(LANGUAGES)),
-        content=content,
-    )
-
-    completion = await call_sea_lion_llm(prompt=prompt)
-    json_response = parse_sealion_json(completion)
-
-    return json_response["base_language"]
-
+# =============================================================================
+# HELPER FUNCTIONS FOR SIGNAL EXTRACTION
+# =============================================================================
 
 def _extract_urls(text: str) -> list:
     """
@@ -225,6 +190,42 @@ def _is_lookalike_domain(domain: str, known_brands: list = None) -> bool:
     return False
 
 
+# =============================================================================
+# 1. LANGUAGE DETECTION FUNCTION
+# =============================================================================
+
+async def detect_language(content: str) -> str:
+    """
+    Detect the base language of website content using LLM.
+
+    This function uses the Sea Lion LLM to identify the primary language
+    of the website content from a predefined list of supported languages.
+
+    Args:
+        content: The website content to analyze
+
+    Returns:
+        str: Language code (e.g., "en", "zh", "ms")
+
+    Example:
+        language = await detect_language("Welcome to our secure banking portal")
+        # Returns: "en"
+    """
+    prompt = prompts["detectLanguage"].format(
+        available_languages=str(", ".join(LANGUAGES)),
+        content=content,
+    )
+
+    completion = await call_sea_lion_llm(prompt=prompt)
+    json_response = parse_sealion_json(completion)
+
+    return json_response["base_language"]
+
+
+# =============================================================================
+# 2. SIGNAL EXTRACTION FUNCTION
+# =============================================================================
+
 def extract_website_signals(url: str, title: str = "", content: str = "",
                             screenshot_data: str = "", metadata: dict = None) -> dict:
     """
@@ -341,6 +342,10 @@ def extract_website_signals(url: str, title: str = "", content: str = "",
     }
 
 
+# =============================================================================
+# 3. WEBSITE ANALYSIS FUNCTION
+# =============================================================================
+
 async def analyze_website_content(url: str, title: str, content: str, base_language: str, signals: dict | None = None) -> dict:
     """
     Perform comprehensive website analysis using LLM.
@@ -384,6 +389,10 @@ async def analyze_website_content(url: str, title: str, content: str, base_langu
 
     return json_response
 
+
+# =============================================================================
+# 4. TRANSLATION FUNCTION
+# =============================================================================
 
 async def translate_analysis(base_language_analysis, base_language, target_language) -> dict:
     """

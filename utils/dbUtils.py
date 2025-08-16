@@ -9,40 +9,15 @@ TABLE OF CONTENTS:
 
 EXPORTED FUNCTIONS:
 ------------------
-1. create_content_hash(content_type, **kwargs) -> str
-   - Creates unique, reusable hashes for content analysis
-   - Supports email, website, and social media content types
-
-2. save_analysis_to_db(document, content_type, **kwargs) -> str
-   - Saves analysis document to MongoDB with error handling
-   - Returns document ID (MongoDB ObjectId or temporary ID)
-
-3. retrieve_analysis_from_db(document_id, content_type, **kwargs) -> dict
-   - Retrieves analysis document from MongoDB by ID
-   - Returns document if found, None otherwise
-
-4. find_analysis_by_hash(content_hash, content_type, **kwargs) -> dict
-   - Finds existing analysis by content hash for reusability
-   - Returns existing document if found, None otherwise
-
-5. update_analysis_in_db(document_id, target_language, analysis_data, content_type, **kwargs) -> bool
-   - Updates existing analysis document with new language analysis
-   - Returns True if update successful, False otherwise
-
-6. get_db_connection_info(content_type, **kwargs) -> dict
-   - Gets database connection information for a content type
-   - Returns dictionary with db_name and collection_name
-
-DOCUMENT PREPARATION FUNCTIONS:
------------------------------
-7. prepare_email_document(title, content, from_email, reply_to_email, base_language, analysis, signals) -> dict
-   - Prepares email document for database storage
-
-8. prepare_social_media_document(platform, content, author_username, post_url, author_followers_count, engagement_metrics, base_language, analysis, signals) -> dict
-   - Prepares social media document for database storage
-
-9. prepare_website_document(url, title, content, screenshot_data, metadata, base_language, analysis, signals) -> dict
-   - Prepares website document for database storage
+1. create_content_hash
+2. save_analysis_to_db
+3. retrieve_analysis_from_db
+4. find_analysis_by_hash
+5. update_analysis_in_db
+6. get_db_connection_info
+7. prepare_email_document
+8. prepare_social_media_document
+9. prepare_website_document
 
 USAGE EXAMPLES:
 --------------
@@ -78,7 +53,11 @@ COLLECTION_NAMES = {
 }
 
 
-def normalize_text(text: str) -> str:
+# =============================================================================
+# HELPER FUNCTIONS FOR CONTENT HASHING
+# =============================================================================
+
+def _normalize_text(text: str) -> str:
     """
     Normalize text for consistent hashing by removing extra whitespace and converting to lowercase.
 
@@ -95,7 +74,7 @@ def normalize_text(text: str) -> str:
     return normalized
 
 
-def normalize_url(url: str) -> str:
+def _normalize_url(url: str) -> str:
     """
     Normalize URL for consistent hashing by removing query parameters and fragments.
 
@@ -117,8 +96,12 @@ def normalize_url(url: str) -> str:
         return normalized.lower()
     except:
         # If URL parsing fails, return normalized original
-        return normalize_text(url)
+        return _normalize_text(url)
 
+
+# =============================================================================
+# 1. CONTENT HASHING FUNCTION
+# =============================================================================
 
 def create_content_hash(content_type: str, **kwargs) -> str:
     """
@@ -147,26 +130,26 @@ def create_content_hash(content_type: str, **kwargs) -> str:
     """
 
     if content_type == "email":
-        subject = normalize_text(kwargs.get('subject', ''))
-        content = normalize_text(kwargs.get('content', ''))
-        from_email = normalize_text(kwargs.get('from_email', ''))
+        subject = _normalize_text(kwargs.get('subject', ''))
+        content = _normalize_text(kwargs.get('content', ''))
+        from_email = _normalize_text(kwargs.get('from_email', ''))
 
         # Create hash from normalized content
         hash_input = f"email:{subject}|{content}|{from_email}"
 
     elif content_type == "website":
-        url = normalize_url(kwargs.get('url', ''))
-        title = normalize_text(kwargs.get('title', ''))
-        content = normalize_text(kwargs.get('content', ''))
+        url = _normalize_url(kwargs.get('url', ''))
+        title = _normalize_text(kwargs.get('title', ''))
+        content = _normalize_text(kwargs.get('content', ''))
 
         # Create hash from normalized URL and content
         hash_input = f"website:{url}|{title}|{content}"
 
     elif content_type == "socialmedia":
         platform = kwargs.get('platform', '').lower()
-        content = normalize_text(kwargs.get('content', ''))
-        author_username = normalize_text(kwargs.get('author_username', ''))
-        post_url = normalize_url(kwargs.get('post_url', ''))
+        content = _normalize_text(kwargs.get('content', ''))
+        author_username = _normalize_text(kwargs.get('author_username', ''))
+        post_url = _normalize_url(kwargs.get('post_url', ''))
 
         # Create hash from platform, content, author, and URL
         hash_input = f"socialmedia:{platform}|{content}|{author_username}|{post_url}"
@@ -178,6 +161,10 @@ def create_content_hash(content_type: str, **kwargs) -> str:
     hash_object = hashlib.sha256(hash_input.encode('utf-8'))
     return hash_object.hexdigest()[:HASH_LENGTH]
 
+
+# =============================================================================
+# 2. DATABASE SAVE FUNCTION
+# =============================================================================
 
 async def save_analysis_to_db(document: Dict[str, Any], content_type: str, **kwargs) -> str:
     """
@@ -219,6 +206,10 @@ async def save_analysis_to_db(document: Dict[str, Any], content_type: str, **kwa
         import uuid
         return f"temp_{uuid.uuid4().hex[:8]}"
 
+
+# =============================================================================
+# 3. DATABASE RETRIEVE FUNCTION
+# =============================================================================
 
 async def retrieve_analysis_from_db(document_id: str, content_type: str, **kwargs) -> Optional[Dict[str, Any]]:
     """
@@ -268,6 +259,10 @@ async def retrieve_analysis_from_db(document_id: str, content_type: str, **kwarg
         return None
 
 
+# =============================================================================
+# 4. HASH-BASED SEARCH FUNCTION
+# =============================================================================
+
 async def find_analysis_by_hash(content_hash: str, content_type: str, **kwargs) -> Optional[Dict[str, Any]]:
     """
     Find existing analysis by content hash for reusability.
@@ -305,6 +300,10 @@ async def find_analysis_by_hash(content_hash: str, content_type: str, **kwargs) 
     except Exception as e:
         return None
 
+
+# =============================================================================
+# 5. DATABASE UPDATE FUNCTION
+# =============================================================================
 
 async def update_analysis_in_db(document_id: str, target_language: str, analysis_data: Dict[str, Any],
                                 content_type: str, **kwargs) -> bool:
@@ -361,6 +360,10 @@ async def update_analysis_in_db(document_id: str, target_language: str, analysis
         return False
 
 
+# =============================================================================
+# 6. DATABASE CONNECTION INFO FUNCTION
+# =============================================================================
+
 async def get_db_connection_info(content_type: str, **kwargs) -> Dict[str, str]:
     """
     Get database connection information for a content type.
@@ -388,6 +391,10 @@ async def get_db_connection_info(content_type: str, **kwargs) -> Dict[str, str]:
         "collection_name": collection_name
     }
 
+
+# =============================================================================
+# 7. EMAIL DOCUMENT PREPARATION FUNCTION
+# =============================================================================
 
 def prepare_email_document(title: str, content: str, from_email: str, reply_to_email: str,
                            base_language: str, analysis: dict, signals: dict | None = None) -> dict:
@@ -440,6 +447,10 @@ def prepare_email_document(title: str, content: str, from_email: str, reply_to_e
 
     return document
 
+
+# =============================================================================
+# 8. SOCIAL MEDIA DOCUMENT PREPARATION FUNCTION
+# =============================================================================
 
 def prepare_social_media_document(platform: str, content: str, author_username: str, post_url: str,
                                   author_followers_count: int, engagement_metrics: dict,
@@ -499,6 +510,10 @@ def prepare_social_media_document(platform: str, content: str, author_username: 
 
     return document
 
+
+# =============================================================================
+# 9. WEBSITE DOCUMENT PREPARATION FUNCTION
+# =============================================================================
 
 def prepare_website_document(url: str, title: str, content: str, screenshot_data: str,
                              metadata: dict, base_language: str, analysis: dict, signals: dict | None = None) -> dict:

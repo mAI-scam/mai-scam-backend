@@ -9,21 +9,10 @@ TABLE OF CONTENTS:
 
 EXPORTED FUNCTIONS:
 ------------------
-1. detect_language(content) -> str
-   - Detects the base language of email content using LLM
-   - Returns language code (e.g., "en", "zh", "ms")
-
-2. extract_signals(title, content, from_email, reply_to_email) -> dict
-   - Extracts auxiliary signals from email content for scam detection
-   - Returns structured signal data including artifacts, metadata, and heuristics
-
-3. analyze_email(title, content, base_language, signals) -> dict
-   - Performs comprehensive email analysis using LLM
-   - Returns risk assessment with reasons and recommended actions
-
-4. translate_analysis(base_language_analysis, base_language, target_language) -> dict
-   - Translates analysis results to target language
-   - Returns translated risk assessment and recommendations
+1. detect_language
+2. extract_signals
+3. analyze_email
+4. translate_analysis
 
 USAGE EXAMPLES:
 --------------
@@ -64,33 +53,9 @@ import re
 import json
 
 
-async def detect_language(content: str) -> str:
-    """
-    Detect the base language of email content using LLM.
-
-    This function uses the Sea Lion LLM to identify the primary language
-    of the email content from a predefined list of supported languages.
-
-    Args:
-        content: The email content to analyze
-
-    Returns:
-        str: Language code (e.g., "en", "zh", "ms")
-
-    Example:
-        language = await detect_language("Hello world")
-        # Returns: "en"
-    """
-    prompt = prompts["detectLanguage"].format(
-        available_languages=str(", ".join(LANGUAGES)),
-        content=content,
-    )
-
-    completion = await call_sea_lion_llm(prompt=prompt)
-    json_response = parse_sealion_json(completion)
-
-    return json_response["base_language"]
-
+# =============================================================================
+# HELPER FUNCTIONS FOR SIGNAL EXTRACTION
+# =============================================================================
 
 def _extract_urls(text: str) -> list:
     """
@@ -182,6 +147,42 @@ def _domains_from_urls(urls: list) -> list:
     return sorted(set(domains))
 
 
+# =============================================================================
+# 1. LANGUAGE DETECTION FUNCTION
+# =============================================================================
+
+async def detect_language(content: str) -> str:
+    """
+    Detect the base language of email content using LLM.
+
+    This function uses the Sea Lion LLM to identify the primary language
+    of the email content from a predefined list of supported languages.
+
+    Args:
+        content: The email content to analyze
+
+    Returns:
+        str: Language code (e.g., "en", "zh", "ms")
+
+    Example:
+        language = await detect_language("Hello world")
+        # Returns: "en"
+    """
+    prompt = prompts["detectLanguage"].format(
+        available_languages=str(", ".join(LANGUAGES)),
+        content=content,
+    )
+
+    completion = await call_sea_lion_llm(prompt=prompt)
+    json_response = parse_sealion_json(completion)
+
+    return json_response["base_language"]
+
+
+# =============================================================================
+# 2. SIGNAL EXTRACTION FUNCTION
+# =============================================================================
+
 def extract_signals(title: str, content: str, from_email: str = "", reply_to_email: str = "") -> dict:
     """
     Extract auxiliary signals from email content for scam detection.
@@ -258,6 +259,10 @@ def extract_signals(title: str, content: str, from_email: str = "", reply_to_ema
     }
 
 
+# =============================================================================
+# 3. EMAIL ANALYSIS FUNCTION
+# =============================================================================
+
 async def analyze_email(title: str, content: str, base_language: str, signals: dict | None = None) -> dict:
     """
     Perform comprehensive email analysis using LLM.
@@ -298,6 +303,10 @@ async def analyze_email(title: str, content: str, base_language: str, signals: d
 
     return json_response
 
+
+# =============================================================================
+# 4. TRANSLATION FUNCTION
+# =============================================================================
 
 async def translate_analysis(base_language_analysis, base_language, target_language) -> dict:
     """

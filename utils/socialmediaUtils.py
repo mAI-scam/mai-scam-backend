@@ -9,21 +9,10 @@ TABLE OF CONTENTS:
 
 EXPORTED FUNCTIONS:
 ------------------
-1. detect_language(content) -> str
-   - Detects the base language of social media content using LLM
-   - Returns language code (e.g., "en", "zh", "ms")
-
-2. extract_social_media_signals(platform, content, author_username, post_url, author_followers_count, engagement_metrics) -> dict
-   - Extracts auxiliary signals from social media content for scam detection
-   - Returns structured signal data including artifacts, platform metadata, and engagement analysis
-
-3. analyze_social_media_content(platform, content, base_language, signals) -> dict
-   - Performs comprehensive social media analysis using LLM
-   - Returns risk assessment with reasons and recommended actions
-
-4. translate_analysis(base_language_analysis, base_language, target_language) -> dict
-   - Translates analysis results to target language
-   - Returns translated risk assessment and recommendations
+1. detect_language
+2. extract_social_media_signals
+3. analyze_social_media_content
+4. translate_analysis
 
 USAGE EXAMPLES:
 --------------
@@ -67,33 +56,9 @@ import re
 import json
 
 
-async def detect_language(content: str) -> str:
-    """
-    Detect the base language of social media content using LLM.
-
-    This function uses the Sea Lion LLM to identify the primary language
-    of the social media content from a predefined list of supported languages.
-
-    Args:
-        content: The social media content to analyze
-
-    Returns:
-        str: Language code (e.g., "en", "zh", "ms")
-
-    Example:
-        language = await detect_language("Check out this amazing offer!")
-        # Returns: "en"
-    """
-    prompt = prompts["detectLanguage"].format(
-        available_languages=str(", ".join(LANGUAGES)),
-        content=content,
-    )
-
-    completion = await call_sea_lion_llm(prompt=prompt)
-    json_response = parse_sealion_json(completion)
-
-    return json_response["base_language"]
-
+# =============================================================================
+# HELPER FUNCTIONS FOR SIGNAL EXTRACTION
+# =============================================================================
 
 def _extract_urls(text: str) -> list:
     """
@@ -181,6 +146,42 @@ def _domains_from_urls(urls: list) -> list:
             domains.append(m.group(1).lower())
     return sorted(set(domains))
 
+
+# =============================================================================
+# 1. LANGUAGE DETECTION FUNCTION
+# =============================================================================
+
+async def detect_language(content: str) -> str:
+    """
+    Detect the base language of social media content using LLM.
+
+    This function uses the Sea Lion LLM to identify the primary language
+    of the social media content from a predefined list of supported languages.
+
+    Args:
+        content: The social media content to analyze
+
+    Returns:
+        str: Language code (e.g., "en", "zh", "ms")
+
+    Example:
+        language = await detect_language("Check out this amazing offer!")
+        # Returns: "en"
+    """
+    prompt = prompts["detectLanguage"].format(
+        available_languages=str(", ".join(LANGUAGES)),
+        content=content,
+    )
+
+    completion = await call_sea_lion_llm(prompt=prompt)
+    json_response = parse_sealion_json(completion)
+
+    return json_response["base_language"]
+
+
+# =============================================================================
+# 2. SIGNAL EXTRACTION FUNCTION
+# =============================================================================
 
 def extract_social_media_signals(platform: str, content: str, author_username: str = "",
                                  post_url: str = "", author_followers_count: int = None,
@@ -313,6 +314,10 @@ def extract_social_media_signals(platform: str, content: str, author_username: s
     }
 
 
+# =============================================================================
+# 3. SOCIAL MEDIA ANALYSIS FUNCTION
+# =============================================================================
+
 async def analyze_social_media_content(platform: str, content: str, base_language: str, signals: dict | None = None) -> dict:
     """
     Perform comprehensive social media analysis using LLM.
@@ -353,6 +358,10 @@ async def analyze_social_media_content(platform: str, content: str, base_languag
 
     return json_response
 
+
+# =============================================================================
+# 4. TRANSLATION FUNCTION
+# =============================================================================
 
 async def translate_analysis(base_language_analysis, base_language, target_language) -> dict:
     """
