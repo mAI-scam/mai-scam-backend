@@ -1,10 +1,23 @@
+"""
+Email Analysis API for MAI Scam Detection System
+
+This module provides endpoints for analyzing email content to detect potential scams
+using AI-powered language detection, signal extraction, and risk assessment.
+
+ENDPOINTS:
+------
+1. GET /email/ - Email API health check
+2. POST /email/v1/analyze - Analyze email for scam detection (v1)
+3. POST /email/v1/translate - Translate email analysis to different language (v1)
+"""
+
 from fastapi import APIRouter, Request, HTTPException, UploadFile, File
 
 from setting import Setting
 import json
 import base64
-from pydantic import BaseModel
-from typing import Optional, Dict
+from pydantic import BaseModel, Field
+from typing import Optional, Dict, Any
 
 from models.customResponse import resp_200
 from utils.emailUtils import detect_language, analyze_email, translate_analysis, extract_signals
@@ -14,53 +27,51 @@ config = Setting()
 
 router = APIRouter(prefix="/email", tags=["Email Analysis"])
 
-# Request and Response models
+# =============================================================================
+# 1. HEALTH CHECK ENDPOINT
+# =============================================================================
 
 
-class EmailAnalysis(BaseModel):
-    risk_level: str
-    reasons: str
-    recommended_action: str
+class HealthResponse(BaseModel):
+    status: str = Field(..., description="Health status")
 
 
-class EmailAnalysisRequest(BaseModel):
-    subject: str
-    content: str
-    from_email: str
-    target_language: str
-    reply_to_email: Optional[str] = None
-
-
-class EmailAnalysisResponse(BaseModel):
-    email_id: str
-    analysis: Dict[str, EmailAnalysis]
-
-
-class EmailTranslationRequest(BaseModel):
-    email_id: str
-    target_language: str
-
-
-class EmailTranslationResponse(BaseModel):
-    email_id: str
-    risk_level: str
-    analysis: str
-    recommended_action: str
-    analysis_language: str
-
-
-# Routes
-
-# 0. Healthcheck
-@router.get("/")
+@router.get("/", response_model=HealthResponse)
 async def healthcheck():
     return {"status": "OK"}
 
-# 1. Detect function
-# a. Detect the base language of the email content
-# b. Perform analysis in "base language" and "target language"
-# c. Store title, content, emails, "base language", analysis in "base language" and analysis in "target language" in database
-# d. Respond analysis in "target language" to user
+# =============================================================================
+# 2. EMAIL ANALYSIS ENDPOINT
+# =============================================================================
+
+
+class EmailAnalysis(BaseModel):
+    risk_level: str = Field(..., description="Risk level: high, medium, low")
+    reasons: str = Field(...,
+                         description="Detailed explanation of risk assessment")
+    recommended_action: str = Field(...,
+                                    description="Recommended action to take")
+
+
+class EmailAnalysisRequest(BaseModel):
+    subject: str = Field(..., description="Email subject line")
+    content: str = Field(..., description="Email content/body")
+    from_email: str = Field(..., description="Sender email address")
+    target_language: str = Field(
+        ..., description="Target language for analysis (en, zh, ms, th, vi)")
+    reply_to_email: Optional[str] = Field(
+        None, description="Reply-to email address")
+
+
+class EmailAnalysisResponse(BaseModel):
+    success: bool = Field(...,
+                          description="Whether the request was successful")
+    message: str = Field(..., description="Response message")
+    data: EmailAnalysis = Field(
+        ..., description="Analysis results including risk level, reasons, and recommended action")
+    timestamp: str = Field(..., description="Response timestamp")
+    status_code: int = Field(..., description="HTTP status code")
+
 
 # V1 Analyze endpoint
 analyze_v1_summary = "Analyze Email for Scam Detection (v1)"
@@ -84,6 +95,7 @@ Analyze email content for potential scam indicators using AI.
 @router.post("/v1/analyze",
              summary=analyze_v1_summary,
              description=analyze_v1_description,
+             response_model=EmailAnalysisResponse,
              response_description="Email analysis results with risk assessment")
 async def detect_v1(request: EmailAnalysisRequest):
     # [Step 0] Read values from the request body
@@ -153,11 +165,26 @@ async def detect_v1(request: EmailAnalysisRequest):
         }
     )
 
+# =============================================================================
+# 3. EMAIL TRANSLATION ENDPOINT
+# =============================================================================
 
-# 2. Translate function
-# a. Retrieve email_id
-# b. Map to database and retrieve analysis in base language
-# c. Perform translation
+
+class EmailTranslationRequest(BaseModel):
+    email_id: str = Field(..., description="Email analysis ID")
+    target_language: str = Field(
+        ..., description="Target language for translation (en, zh, ms, th, vi)")
+
+
+class EmailTranslationResponse(BaseModel):
+    success: bool = Field(...,
+                          description="Whether the request was successful")
+    message: str = Field(..., description="Response message")
+    data: EmailAnalysis = Field(
+        ..., description="Analysis results including risk level, reasons, and recommended action")
+    timestamp: str = Field(..., description="Response timestamp")
+    status_code: int = Field(..., description="HTTP status code")
+
 
 # V1 Translate endpoint
 translate_v1_summary = "Translate Email Analysis (v1)"
@@ -182,6 +209,7 @@ Translate email analysis results to different languages.
 @router.post("/v1/translate",
              summary=translate_v1_summary,
              description=translate_v1_description,
+             response_model=EmailTranslationResponse,
              response_description="Translated email analysis results")
 async def translate_v1(request: EmailTranslationRequest):
     # [Step 0] Read values from the request body

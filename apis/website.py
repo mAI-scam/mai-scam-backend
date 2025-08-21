@@ -1,10 +1,23 @@
+"""
+Website Analysis API for MAI Scam Detection System
+
+This module provides endpoints for analyzing website content to detect potential scams
+using AI-powered URL analysis, content evaluation, and security assessment.
+
+ENDPOINTS:
+------
+1. GET /website/ - Website API health check
+2. POST /website/v1/analyze - Analyze website for scam detection (v1)
+3. POST /website/v1/translate - Translate website analysis to different language (v1)
+"""
+
 from fastapi import APIRouter, Request, HTTPException, UploadFile, File
 
 from setting import Setting
 import json
 import base64
-from pydantic import BaseModel
-from typing import Optional, Dict, List
+from pydantic import BaseModel, Field
+from typing import Optional, Dict, List, Any
 
 from models.customResponse import resp_200
 from utils.websiteUtils import detect_language, analyze_website_content, translate_analysis, extract_website_signals
@@ -14,51 +27,53 @@ config = Setting()
 
 router = APIRouter(prefix="/website", tags=["Website Analysis"])
 
-# Request and Response models
+# =============================================================================
+# 1. HEALTH CHECK ENDPOINT
+# =============================================================================
 
 
-class WebsiteAnalysis(BaseModel):
-    risk_level: str
-    reasons: str
-    recommended_action: str
+class HealthResponse(BaseModel):
+    status: str = Field(..., description="Health status")
 
 
-class WebsiteAnalysisRequest(BaseModel):
-    url: str
-    title: Optional[str] = None
-    content: Optional[str] = None
-    target_language: str
-    screenshot_data: Optional[str] = None  # base64 encoded screenshot
-    metadata: Optional[Dict] = None  # SSL info, domain age, etc.
-
-
-class WebsiteAnalysisResponse(BaseModel):
-    website_id: str
-    analysis: Dict[str, WebsiteAnalysis]
-
-
-class WebsiteTranslationRequest(BaseModel):
-    website_id: str
-    target_language: str
-
-
-class WebsiteTranslationResponse(BaseModel):
-    website_id: str
-    risk_level: str
-    analysis: str
-    recommended_action: str
-    analysis_language: str
-
-# Routes
-
-# 0. Healthcheck
-
-
-@router.get("/")
+@router.get("/", response_model=HealthResponse)
 async def healthcheck():
     return {"status": "OK"}
 
-# 1. Analyze website content
+# =============================================================================
+# 2. WEBSITE ANALYSIS ENDPOINT
+# =============================================================================
+
+
+class WebsiteAnalysis(BaseModel):
+    risk_level: str = Field(..., description="Risk level: high, medium, low")
+    reasons: str = Field(...,
+                         description="Detailed explanation of risk assessment")
+    recommended_action: str = Field(...,
+                                    description="Recommended action to take")
+
+
+class WebsiteAnalysisRequest(BaseModel):
+    url: str = Field(..., description="Website URL to analyze")
+    title: Optional[str] = Field(None, description="Website title")
+    content: Optional[str] = Field(None, description="Website content/text")
+    target_language: str = Field(
+        ..., description="Target language for analysis (en, zh, ms, th, vi)")
+    screenshot_data: Optional[str] = Field(
+        None, description="Base64 encoded screenshot")
+    metadata: Optional[Dict[str, Any]] = Field(
+        None, description="SSL info, domain age, etc.")
+
+
+class WebsiteAnalysisResponse(BaseModel):
+    success: bool = Field(...,
+                          description="Whether the request was successful")
+    message: str = Field(..., description="Response message")
+    data: WebsiteAnalysis = Field(
+        ..., description="Analysis results including risk level, reasons, and recommended action")
+    timestamp: str = Field(..., description="Response timestamp")
+    status_code: int = Field(..., description="HTTP status code")
+
 
 # V1 Analyze endpoint
 analyze_v1_summary = "Analyze Website for Scam Detection (v1)"
@@ -90,6 +105,7 @@ Analyze website content for potential scam indicators using AI.
 @router.post("/v1/analyze",
              summary=analyze_v1_summary,
              description=analyze_v1_description,
+             response_model=WebsiteAnalysisResponse,
              response_description="Website analysis results with risk assessment")
 async def analyze_website_v1(request: WebsiteAnalysisRequest):
     # [Step 0] Read values from the request body
@@ -137,7 +153,7 @@ async def analyze_website_v1(request: WebsiteAnalysisRequest):
         )
         analysis[target_language] = target_language_analysis
 
-        # [Step 4] Create unique content hash for reusability
+    # [Step 4] Create unique content hash for reusability
     content_hash = create_content_hash(
         "website", url=url, title=title, content=content)
 
@@ -176,7 +192,26 @@ async def analyze_website_v1(request: WebsiteAnalysisRequest):
         }
     )
 
-# 2. Translate analysis function
+# =============================================================================
+# 3. WEBSITE TRANSLATION ENDPOINT
+# =============================================================================
+
+
+class WebsiteTranslationRequest(BaseModel):
+    website_id: str = Field(..., description="Website analysis ID")
+    target_language: str = Field(
+        ..., description="Target language for translation (en, zh, ms, th, vi)")
+
+
+class WebsiteTranslationResponse(BaseModel):
+    success: bool = Field(...,
+                          description="Whether the request was successful")
+    message: str = Field(..., description="Response message")
+    data: WebsiteAnalysis = Field(
+        ..., description="Analysis results including risk level, reasons, and recommended action")
+    timestamp: str = Field(..., description="Response timestamp")
+    status_code: int = Field(..., description="HTTP status code")
+
 
 # V1 Translate endpoint
 translate_v1_summary = "Translate Website Analysis (v1)"
@@ -201,6 +236,7 @@ Translate website analysis results to different languages.
 @router.post("/v1/translate",
              summary=translate_v1_summary,
              description=translate_v1_description,
+             response_model=WebsiteTranslationResponse,
              response_description="Translated website analysis results")
 async def translate_website_analysis_v1(request: WebsiteTranslationRequest):
     # [Step 0] Read values from the request body

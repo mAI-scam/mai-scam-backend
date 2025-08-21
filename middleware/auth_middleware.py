@@ -124,7 +124,18 @@ class AuthMiddleware:
             bool: True if auth should be skipped
         """
         # Use central configuration from utils/constant.py
-        return any(path.startswith(skip_path) for skip_path in PUBLIC_ENDPOINTS)
+        # Check for exact matches first, then startswith for path patterns
+        for skip_path in PUBLIC_ENDPOINTS:
+            # For exact paths like /docs, /redoc, /openapi.json
+            if path == skip_path:
+                return True
+            # For path patterns like /auth/token, /auth/api-key
+            if skip_path.endswith('/') and path.startswith(skip_path):
+                return True
+            # For root path
+            if skip_path == "/" and path == "/":
+                return True
+        return False
 
 
 # =============================================================================
@@ -358,14 +369,37 @@ class SecurityHeadersMiddleware:
             async def send_with_headers(message):
                 if message["type"] == "http.response.start":
                     headers = message.get("headers", [])
+                    
+                    # Check if this is a docs endpoint that needs more permissive CSP
+                    path = scope.get("path", "")
+                    is_docs_endpoint = path in ["/docs", "/redoc", "/openapi.json"]
+                    
+                    # Add basic security headers
                     headers.extend([
                         (b"X-Content-Type-Options", b"nosniff"),
                         (b"X-Frame-Options", b"DENY"),
                         (b"X-XSS-Protection", b"1; mode=block"),
                         (b"Strict-Transport-Security",
                          b"max-age=31536000; includeSubDomains"),
-                        (b"Content-Security-Policy", b"default-src 'self'"),
                     ])
+                    
+                    # Add appropriate CSP based on endpoint
+                    if is_docs_endpoint:
+                        # More permissive CSP for docs to allow Swagger UI and ReDoc to work
+                        csp = (
+                            b"default-src 'self'; "
+                            b"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; "
+                            b"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://fonts.googleapis.com; "
+                            b"font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://unpkg.com; "
+                            b"img-src 'self' data: https:; "
+                            b"connect-src 'self' https://cdn.jsdelivr.net https://unpkg.com; "
+                            b"frame-ancestors 'none'"
+                        )
+                    else:
+                        # Strict CSP for regular endpoints
+                        csp = b"default-src 'self'; frame-ancestors 'none'"
+                    
+                    headers.append((b"Content-Security-Policy", csp))
                     message["headers"] = headers
                 await send(message)
 

@@ -33,6 +33,7 @@ from middleware.auth_middleware import (
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 import uvicorn
 import logging
+import os
 
 config = Setting()
 logger = logging.getLogger(__name__)
@@ -107,8 +108,9 @@ def get_application() -> FastAPI:
     # Include all API routes from router.py
     application.include_router(api_router)
 
-    # Enforce OpenAPI spec version
+    # Use auto-generated OpenAPI specification
     application.openapi_version = "3.0.2"
+    print("✅ Using auto-generated OpenAPI specification")
 
     return application
 

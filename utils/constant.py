@@ -9,17 +9,22 @@ TABLE OF CONTENTS:
 
 CONSTANT SECTIONS:
 -----------------
-1. LANGUAGES - Supported languages for analysis
-2. REGEX PATTERNS - Common regex patterns for text extraction
-3. SUSPICIOUS INDICATORS - Domains, TLDs, and keywords for scam detection
-4. KEYWORDS - Scam-related keywords for each use case
-5. THRESHOLDS - Various thresholds and limits
-6. AUTHENTICATION - JWT and API key configuration
-7. HASHING - Hashing algorithm configuration
+1. ENDPOINT CONFIGURATION - API endpoint protection settings
+2. AUTHENTICATION & SECURITY - JWT, API keys, and client types
+3. LANGUAGES - Supported languages for analysis
+4. REGEX PATTERNS - Common regex patterns for text extraction
+5. SUSPICIOUS INDICATORS - Domains, TLDs, and keywords for scam detection
+6. KEYWORDS - Scam-related keywords for each use case
+7. THRESHOLDS - Various thresholds and limits
+8. HASHING - Hashing algorithm configuration
 
 USAGE EXAMPLES:
 --------------
-from utils.constant import EMAIL_KEYWORDS, URL_PATTERN, CLIENT_TYPES
+from utils.constant import PUBLIC_ENDPOINTS, EMAIL_KEYWORDS, URL_PATTERN
+
+# Check if endpoint is public
+if path in PUBLIC_ENDPOINTS:
+    skip_auth = True
 
 # Use constants in your code
 if any(keyword in text.lower() for keyword in EMAIL_KEYWORDS["urgency"]):
@@ -33,38 +38,47 @@ from setting import Setting
 config = Setting()
 
 # =============================================================================
-# LANGUAGE CONSTANTS
+# ENDPOINT PROTECTION CONFIGURATION
 # =============================================================================
 
-LANGUAGES = ["en", "zh", "ms", "th", "vi"]
+# Public endpoints (no authentication required)
+PUBLIC_ENDPOINTS = [
+    "/",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
+    "/health",
+    "/debug/auth",
+    "/auth/token",
+    "/auth/api-key",
+    "/auth/verify"
+]
 
-# =============================================================================
-# REGEX PATTERNS
-# =============================================================================
+# Endpoints that require authentication but no specific permissions
+AUTH_REQUIRED_ENDPOINTS = [
+    "/email/v1/analyze",
+    "/email/v1/translate",
+    "/socialmedia/v1/analyze",
+    "/socialmedia/v1/translate",
+    "/website/v1/analyze",
+    "/website/v1/translate"
+]
 
-URL_PATTERN = r'https?://(?:[-\w.])+(?:[:\d]+)?(?:/(?:[\w/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?'
-EMAIL_PATTERN = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-PHONE_PATTERN = r'\+?[\d\s\-\(\)]{7,}'
-HASHTAG_PATTERN = r'#\w+'
-MENTION_PATTERN = r'@\w+'
+# Endpoints with specific permission requirements
+PERMISSION_PROTECTED_ENDPOINTS = {
+    "/email/v1/analyze": ["email_analysis"],
+    "/email/v1/translate": ["email_analysis"],
+    "/socialmedia/v1/analyze": ["social_media_analysis"],
+    "/socialmedia/v1/translate": ["social_media_analysis"],
+    "/website/v1/analyze": ["website_analysis"],
+    "/website/v1/translate": ["website_analysis"]
+}
 
-# =============================================================================
-# SUSPICIOUS DOMAINS AND TLDs
-# =============================================================================
-
-SUSPICIOUS_TLDS = [".tk", ".ml", ".ga", ".cf",
-                   ".gq", ".xyz", ".top", ".club", ".online"]
-URL_SHORTENERS = ["bit.ly", "tinyurl.com",
-                  "goo.gl", "t.co", "is.gd", "v.gd", "ow.ly"]
-
-# =============================================================================
-# KNOWN BRANDS (for lookalike detection)
-# =============================================================================
-
-KNOWN_BRANDS = [
-    "google", "facebook", "amazon", "apple", "microsoft", "netflix", "paypal",
-    "ebay", "linkedin", "twitter", "instagram", "whatsapp", "telegram",
-    "spotify", "youtube", "discord", "slack", "zoom", "dropbox", "github"
+# Admin-only endpoints
+ADMIN_ENDPOINTS = [
+    "/auth/keys",
+    "/auth/keys/{key_id}",
+    "/debug/admin"
 ]
 
 # =============================================================================
@@ -104,47 +118,38 @@ CLIENT_TYPES = {
 }
 
 # =============================================================================
-# ENDPOINT PROTECTION CONFIGURATION
+# LANGUAGE CONSTANTS
 # =============================================================================
 
-# Public endpoints (no authentication required)
-PUBLIC_ENDPOINTS = [
-    "/docs",
-    "/redoc",
-    "/openapi.json",
-    "/health",
-    "/",
-    "/debug/auth",
-    "/auth/token",
-    "/auth/api-key",
-    "/auth/verify"
-]
+LANGUAGES = ["en", "zh", "ms", "th", "vi"]
 
-# Endpoints that require authentication but no specific permissions
-AUTH_REQUIRED_ENDPOINTS = [
-    "/email/v1/analyze",
-    "/email/v1/translate",
-    "/socialmedia/v1/analyze",
-    "/socialmedia/v1/translate",
-    "/website/v1/analyze",
-    "/website/v1/translate"
-]
+# =============================================================================
+# REGEX PATTERNS
+# =============================================================================
 
-# Endpoints with specific permission requirements
-PERMISSION_PROTECTED_ENDPOINTS = {
-    "/email/v1/analyze": ["email_analysis"],
-    "/email/v1/translate": ["email_analysis"],
-    "/socialmedia/v1/analyze": ["social_media_analysis"],
-    "/socialmedia/v1/translate": ["social_media_analysis"],
-    "/website/v1/analyze": ["website_analysis"],
-    "/website/v1/translate": ["website_analysis"]
-}
+URL_PATTERN = r'https?://(?:[-\w.])+(?:[:\d]+)?(?:/(?:[\w/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?'
+EMAIL_PATTERN = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+PHONE_PATTERN = r'\+?[\d\s\-\(\)]{7,}'
+HASHTAG_PATTERN = r'#\w+'
+MENTION_PATTERN = r'@\w+'
 
-# Admin-only endpoints
-ADMIN_ENDPOINTS = [
-    "/auth/keys",
-    "/auth/keys/{key_id}",
-    "/debug/admin"
+# =============================================================================
+# SUSPICIOUS DOMAINS AND TLDs
+# =============================================================================
+
+SUSPICIOUS_TLDS = [".tk", ".ml", ".ga", ".cf",
+                   ".gq", ".xyz", ".top", ".club", ".online"]
+URL_SHORTENERS = ["bit.ly", "tinyurl.com",
+                  "goo.gl", "t.co", "is.gd", "v.gd", "ow.ly"]
+
+# =============================================================================
+# KNOWN BRANDS (for lookalike detection)
+# =============================================================================
+
+KNOWN_BRANDS = [
+    "google", "facebook", "amazon", "apple", "microsoft", "netflix", "paypal",
+    "ebay", "linkedin", "twitter", "instagram", "whatsapp", "telegram",
+    "spotify", "youtube", "discord", "slack", "zoom", "dropbox", "github"
 ]
 
 # =============================================================================

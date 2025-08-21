@@ -1,10 +1,23 @@
+"""
+Social Media Analysis API for MAI Scam Detection System
+
+This module provides endpoints for analyzing social media content to detect potential scams
+using AI-powered platform-specific detection, engagement analysis, and risk assessment.
+
+ENDPOINTS:
+------
+1. GET /socialmedia/ - Social Media API health check
+2. POST /socialmedia/v1/analyze - Analyze social media post for scam detection (v1)
+3. POST /socialmedia/v1/translate - Translate social media analysis to different language (v1)
+"""
+
 from fastapi import APIRouter, Request, HTTPException, UploadFile, File
 
 from setting import Setting
 import json
 import base64
-from pydantic import BaseModel
-from typing import Optional, Dict, List
+from pydantic import BaseModel, Field
+from typing import Optional, Dict, List, Any
 
 from models.customResponse import resp_200
 from utils.socialmediaUtils import detect_language, analyze_social_media_content, translate_analysis, extract_social_media_signals
@@ -14,52 +27,55 @@ config = Setting()
 
 router = APIRouter(prefix="/socialmedia", tags=["Social Media Analysis"])
 
-# Request and Response models
+# =============================================================================
+# 1. HEALTH CHECK ENDPOINT
+# =============================================================================
 
 
-class SocialMediaAnalysis(BaseModel):
-    risk_level: str
-    reasons: str
-    recommended_action: str
+class HealthResponse(BaseModel):
+    status: str = Field(..., description="Health status")
 
 
-class SocialMediaAnalysisRequest(BaseModel):
-    platform: str  # e.g., "facebook", "instagram", "twitter", "tiktok"
-    content: str
-    author_username: str
-    target_language: str
-    post_url: Optional[str] = None
-    author_followers_count: Optional[int] = None
-    engagement_metrics: Optional[Dict] = None
-
-
-class SocialMediaAnalysisResponse(BaseModel):
-    post_id: str
-    analysis: Dict[str, SocialMediaAnalysis]
-
-
-class SocialMediaTranslationRequest(BaseModel):
-    post_id: str
-    target_language: str
-
-
-class SocialMediaTranslationResponse(BaseModel):
-    post_id: str
-    risk_level: str
-    analysis: str
-    recommended_action: str
-    analysis_language: str
-
-# Routes
-
-# 0. Healthcheck
-
-
-@router.get("/")
+@router.get("/", response_model=HealthResponse)
 async def healthcheck():
     return {"status": "OK"}
 
-# 1. Analyze social media content
+# =============================================================================
+# 2. SOCIAL MEDIA ANALYSIS ENDPOINT
+# =============================================================================
+
+
+class SocialMediaAnalysis(BaseModel):
+    risk_level: str = Field(..., description="Risk level: high, medium, low")
+    reasons: str = Field(...,
+                         description="Detailed explanation of risk assessment")
+    recommended_action: str = Field(...,
+                                    description="Recommended action to take")
+
+
+class SocialMediaAnalysisRequest(BaseModel):
+    platform: str = Field(
+        ..., description="Social media platform (facebook, instagram, twitter, tiktok, linkedin)")
+    content: str = Field(..., description="Post content/text")
+    author_username: str = Field(..., description="Author's username")
+    target_language: str = Field(
+        ..., description="Target language for analysis (en, zh, ms, th, vi)")
+    post_url: Optional[str] = Field(None, description="URL of the post")
+    author_followers_count: Optional[int] = Field(
+        None, description="Number of followers")
+    engagement_metrics: Optional[Dict[str, Any]] = Field(
+        None, description="Engagement metrics (likes, shares, comments)")
+
+
+class SocialMediaAnalysisResponse(BaseModel):
+    success: bool = Field(...,
+                          description="Whether the request was successful")
+    message: str = Field(..., description="Response message")
+    data: SocialMediaAnalysis = Field(
+        ..., description="Analysis results including risk level, reasons, and recommended action")
+    timestamp: str = Field(..., description="Response timestamp")
+    status_code: int = Field(..., description="HTTP status code")
+
 
 # V1 Analyze endpoint
 analyze_v1_summary = "Analyze Social Media Post for Scam Detection (v1)"
@@ -92,6 +108,7 @@ Analyze social media content for potential scam indicators using AI.
 @router.post("/v1/analyze",
              summary=analyze_v1_summary,
              description=analyze_v1_description,
+             response_model=SocialMediaAnalysisResponse,
              response_description="Social media analysis results with risk assessment")
 async def analyze_social_media_post_v1(request: SocialMediaAnalysisRequest):
     # [Step 0] Read values from the request body
@@ -178,7 +195,26 @@ async def analyze_social_media_post_v1(request: SocialMediaAnalysisRequest):
         }
     )
 
-# 2. Translate analysis function
+# =============================================================================
+# 3. SOCIAL MEDIA TRANSLATION ENDPOINT
+# =============================================================================
+
+
+class SocialMediaTranslationRequest(BaseModel):
+    post_id: str = Field(..., description="Social media post analysis ID")
+    target_language: str = Field(
+        ..., description="Target language for translation (en, zh, ms, th, vi)")
+
+
+class SocialMediaTranslationResponse(BaseModel):
+    success: bool = Field(...,
+                          description="Whether the request was successful")
+    message: str = Field(..., description="Response message")
+    data: SocialMediaAnalysis = Field(
+        ..., description="Analysis results including risk level, reasons, and recommended action")
+    timestamp: str = Field(..., description="Response timestamp")
+    status_code: int = Field(..., description="HTTP status code")
+
 
 # V1 Translate endpoint
 translate_v1_summary = "Translate Social Media Analysis (v1)"
@@ -203,6 +239,7 @@ Translate social media analysis results to different languages.
 @router.post("/v1/translate",
              summary=translate_v1_summary,
              description=translate_v1_description,
+             response_model=SocialMediaTranslationResponse,
              response_description="Translated social media analysis results")
 async def translate_social_media_analysis_v1(request: SocialMediaTranslationRequest):
     # [Step 0] Read values from the request body
