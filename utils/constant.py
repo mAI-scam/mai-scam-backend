@@ -68,6 +68,86 @@ KNOWN_BRANDS = [
 ]
 
 # =============================================================================
+# AUTHENTICATION & SECURITY CONFIGURATION
+# =============================================================================
+
+# JWT Configuration
+JWT_SECRET_KEY = "your-super-secret-jwt-key-change-in-production"
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRY_HOURS = 24
+
+# API Key Configuration
+API_KEY_LENGTH = 32
+API_KEY_PREFIX = "mai_"
+
+# Client Types and their rate limits
+CLIENT_TYPES = {
+    "web_extension": {
+        # 100 requests per hour
+        "rate_limit": {"requests": 100, "window": 3600},
+        "default_permissions": ["email_analysis", "website_analysis", "social_media_analysis"]
+    },
+    "chatbot": {
+        # 1000 requests per hour
+        "rate_limit": {"requests": 1000, "window": 3600},
+        "default_permissions": ["email_analysis", "website_analysis", "social_media_analysis"]
+    },
+    "mobile_app": {
+        "rate_limit": {"requests": 50, "window": 3600},  # 50 requests per hour
+        "default_permissions": ["email_analysis", "website_analysis", "social_media_analysis"]
+    },
+    "admin": {
+        # 10000 requests per hour
+        "rate_limit": {"requests": 10000, "window": 3600},
+        "default_permissions": ["*"]  # All permissions
+    }
+}
+
+# =============================================================================
+# ENDPOINT PROTECTION CONFIGURATION
+# =============================================================================
+
+# Public endpoints (no authentication required)
+PUBLIC_ENDPOINTS = [
+    "/docs",
+    "/redoc",
+    "/openapi.json",
+    "/health",
+    "/",
+    "/debug/auth",
+    "/auth/token",
+    "/auth/api-key",
+    "/auth/verify"
+]
+
+# Endpoints that require authentication but no specific permissions
+AUTH_REQUIRED_ENDPOINTS = [
+    "/email/v1/analyze",
+    "/email/v1/translate",
+    "/socialmedia/v1/analyze",
+    "/socialmedia/v1/translate",
+    "/website/v1/analyze",
+    "/website/v1/translate"
+]
+
+# Endpoints with specific permission requirements
+PERMISSION_PROTECTED_ENDPOINTS = {
+    "/email/v1/analyze": ["email_analysis"],
+    "/email/v1/translate": ["email_analysis"],
+    "/socialmedia/v1/analyze": ["social_media_analysis"],
+    "/socialmedia/v1/translate": ["social_media_analysis"],
+    "/website/v1/analyze": ["website_analysis"],
+    "/website/v1/translate": ["website_analysis"]
+}
+
+# Admin-only endpoints
+ADMIN_ENDPOINTS = [
+    "/auth/keys",
+    "/auth/keys/{key_id}",
+    "/debug/admin"
+]
+
+# =============================================================================
 # EMAIL ANALYSIS KEYWORDS
 # =============================================================================
 
@@ -143,44 +223,6 @@ MIN_PHONE_LENGTH = 7
 MAX_HYPHENS_IN_DOMAIN = 3
 RANDOM_SUBDOMAIN_PATTERN = r'[a-z0-9]{8,}'
 SUSPICIOUS_PATH_KEYWORDS = ["login", "secure", "verify", "confirm"]
-
-# =============================================================================
-# AUTHENTICATION CONSTANTS
-# =============================================================================
-
-# JWT Configuration
-JWT_SECRET_KEY = config.get(
-    "JWT_SECRET_KEY", "your-super-secret-jwt-key-change-in-production")
-JWT_ALGORITHM = config.get("JWT_ALGORITHM", "HS256")
-JWT_EXPIRY_HOURS = config.get("JWT_EXPIRY_HOURS", 24)
-
-# API Key Configuration
-API_KEY_LENGTH = config.get("API_KEY_LENGTH", 32)
-API_KEY_PREFIX = config.get("API_KEY_PREFIX", "mai_")
-
-# Client Types and Permissions
-CLIENT_TYPES = {
-    "web_extension": {
-        "permissions": ["email_analysis", "website_analysis", "social_media_analysis"],
-        "rate_limit": 100,  # requests per hour
-        "description": "Web browser extension for real-time scam detection"
-    },
-    "chatbot": {
-        "permissions": ["email_analysis"],
-        "rate_limit": 50,  # requests per hour
-        "description": "Chatbot integration for email analysis"
-    },
-    "mobile_app": {
-        "permissions": ["email_analysis", "website_analysis", "social_media_analysis"],
-        "rate_limit": 200,  # requests per hour
-        "description": "Mobile application for scam detection"
-    },
-    "api_client": {
-        "permissions": ["email_analysis", "website_analysis", "social_media_analysis"],
-        "rate_limit": 1000,  # requests per hour
-        "description": "Third-party API client"
-    }
-}
 
 # =============================================================================
 # HASHING CONSTANTS

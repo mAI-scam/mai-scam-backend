@@ -40,6 +40,7 @@ from starlette.responses import JSONResponse
 from typing import Callable, Optional
 import time
 from utils.authUtils import authenticate_request, verify_jwt_token, verify_api_key
+from utils.constant import PUBLIC_ENDPOINTS, AUTH_REQUIRED_ENDPOINTS, PERMISSION_PROTECTED_ENDPOINTS, ADMIN_ENDPOINTS
 
 
 # =============================================================================
@@ -122,20 +123,8 @@ class AuthMiddleware:
         Returns:
             bool: True if auth should be skipped
         """
-        # Skip authentication for these paths
-        skip_paths = [
-            "/docs",
-            "/redoc",
-            "/openapi.json",
-            "/health",
-            "/",
-            "/debug/auth",
-            "/auth/token",
-            "/auth/api-key",
-            "/auth/verify"
-        ]
-
-        return any(path.startswith(skip_path) for skip_path in skip_paths)
+        # Use central configuration from utils/constant.py
+        return any(path.startswith(skip_path) for skip_path in PUBLIC_ENDPOINTS)
 
 
 # =============================================================================
@@ -176,6 +165,10 @@ def require_permission(required_permission: str):
         auth_result = authenticate_request(request)
         permissions = auth_result.get("permissions", [])
 
+        # Check if user has admin permissions (wildcard)
+        if "*" in permissions:
+            return auth_result
+
         if required_permission not in permissions:
             raise HTTPException(
                 status_code=403,
@@ -188,7 +181,69 @@ def require_permission(required_permission: str):
 
 
 # =============================================================================
-# 4. RATE LIMITING MIDDLEWARE
+# 4. ENDPOINT-SPECIFIC PERMISSION CHECKING
+# =============================================================================
+
+def require_endpoint_permission():
+    """
+    FastAPI dependency that checks permissions based on the endpoint path.
+
+    This function automatically determines the required permission based on
+    the PERMISSION_PROTECTED_ENDPOINTS configuration.
+    """
+    async def check_endpoint_permission(request: Request):
+        path = request.url.path
+
+        # Check if endpoint requires specific permissions
+        if path in PERMISSION_PROTECTED_ENDPOINTS:
+            required_permissions = PERMISSION_PROTECTED_ENDPOINTS[path]
+            auth_result = authenticate_request(request)
+            user_permissions = auth_result.get("permissions", [])
+
+            # Check if user has admin permissions (wildcard)
+            if "*" in user_permissions:
+                return auth_result
+
+            # Check if user has any of the required permissions
+            if not any(perm in user_permissions for perm in required_permissions):
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"One of these permissions required: {', '.join(required_permissions)}"
+                )
+
+            return auth_result
+
+        # For endpoints not in PERMISSION_PROTECTED_ENDPOINTS, just require authentication
+        return authenticate_request(request)
+
+    return check_endpoint_permission
+
+
+# =============================================================================
+# 5. ADMIN-ONLY ENDPOINT CHECKING
+# =============================================================================
+
+def require_admin():
+    """
+    FastAPI dependency that requires admin permissions.
+    """
+    async def check_admin_permission(request: Request):
+        auth_result = authenticate_request(request)
+        permissions = auth_result.get("permissions", [])
+
+        if "*" not in permissions:
+            raise HTTPException(
+                status_code=403,
+                detail="Admin permissions required"
+            )
+
+        return auth_result
+
+    return check_admin_permission
+
+
+# =============================================================================
+# 6. RATE LIMITING MIDDLEWARE
 # =============================================================================
 
 class RateLimitMiddleware:
@@ -260,7 +315,7 @@ class RateLimitMiddleware:
 
 
 # =============================================================================
-# 5. CORS MIDDLEWARE CONFIGURATION
+# 7. CORS MIDDLEWARE CONFIGURATION
 # =============================================================================
 
 
@@ -286,7 +341,7 @@ def configure_cors(app):
 
 
 # =============================================================================
-# 6. SECURITY HEADERS MIDDLEWARE
+# 8. SECURITY HEADERS MIDDLEWARE
 # =============================================================================
 
 class SecurityHeadersMiddleware:
@@ -320,7 +375,7 @@ class SecurityHeadersMiddleware:
 
 
 # =============================================================================
-# 7. LOGGING MIDDLEWARE
+# 9. LOGGING MIDDLEWARE
 # =============================================================================
 
 
@@ -373,7 +428,7 @@ class LoggingMiddleware:
 
 
 # =============================================================================
-# 8. ERROR HANDLING MIDDLEWARE
+# 10. ERROR HANDLING MIDDLEWARE
 # =============================================================================
 
 class ErrorHandlingMiddleware:
