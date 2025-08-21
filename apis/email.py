@@ -62,26 +62,30 @@ async def healthcheck():
 # c. Store title, content, emails, "base language", analysis in "base language" and analysis in "target language" in database
 # d. Respond analysis in "target language" to user
 
+# V1 Analyze endpoint
+analyze_v1_summary = "Analyze Email for Scam Detection (v1)"
 
-@router.post("/analyze",
-             summary="Analyze Email for Scam Detection",
-             description="""
-    Analyze email content for potential scam indicators using AI.
-    
-    **Features:**
-    - Language detection (English, Chinese, Malay, Thai, Vietnamese)
-    - Signal extraction (URLs, domains, keywords, metadata)
-    - AI-powered risk assessment (High/Medium/Low)
-    - Content hashing for reusability
-    
-    **Returns:**
-    - Risk level assessment
-    - Detailed analysis explanation
-    - Recommended actions
-    - Content reuse indicator
-    """,
+analyze_v1_description = """
+Analyze email content for potential scam indicators using AI.    
+**Features:**
+- Language detection (English, Chinese, Malay, Thai, Vietnamese)
+- Signal extraction (URLs, domains, keywords, metadata)
+- AI-powered risk assessment (High/Medium/Low)
+- Content hashing for reusability
+
+**Returns:**
+- Risk level assessment
+- Detailed analysis explanation
+- Recommended actions
+- Content reuse indicator
+"""
+
+
+@router.post("/v1/analyze",
+             summary=analyze_v1_summary,
+             description=analyze_v1_description,
              response_description="Email analysis results with risk assessment")
-async def detect(request: EmailAnalysisRequest):
+async def detect_v1(request: EmailAnalysisRequest):
     # [Step 0] Read values from the request body
     try:
         subject = request.subject
@@ -154,25 +158,32 @@ async def detect(request: EmailAnalysisRequest):
 # a. Retrieve email_id
 # b. Map to database and retrieve analysis in base language
 # c. Perform translation
-@router.post("/translate",
-             summary="Translate Email Analysis",
-             description="""
-    Translate email analysis results to different languages.
-    
-    **Features:**
-    - Multi-language translation support
-    - Preserves original analysis accuracy
-    - Maintains risk assessment integrity
-    
-    **Supported Languages:**
-    - English (en)
-    - Chinese (zh)
-    - Malay (ms)
-    - Thai (th)
-    - Vietnamese (vi)
-    """,
+
+# V1 Translate endpoint
+translate_v1_summary = "Translate Email Analysis (v1)"
+
+translate_v1_description = """
+Translate email analysis results to different languages.
+
+**Features:**
+- Multi-language translation support
+- Preserves original analysis accuracy
+- Maintains risk assessment integrity
+
+**Supported Languages:**
+- English (en)
+- Chinese (zh)
+- Malay (ms)
+- Thai (th)
+- Vietnamese (vi)
+"""
+
+
+@router.post("/v1/translate",
+             summary=translate_v1_summary,
+             description=translate_v1_description,
              response_description="Translated email analysis results")
-async def translate(request: EmailTranslationRequest):
+async def translate_v1(request: EmailTranslationRequest):
     # [Step 0] Read values from the request body
     try:
         email_id = request.email_id

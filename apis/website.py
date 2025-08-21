@@ -60,33 +60,38 @@ async def healthcheck():
 
 # 1. Analyze website content
 
+# V1 Analyze endpoint
+analyze_v1_summary = "Analyze Website for Scam Detection (v1)"
 
-@router.post("/analyze",
-             summary="Analyze Website for Scam Detection",
-             description="""
-    Analyze website content for potential scam indicators using AI.
-    
-    **Features:**
-    - URL and domain analysis
-    - Content text analysis
-    - Screenshot analysis (if provided)
-    - SSL and security metadata
-    - AI-powered risk assessment
-    
-    **Input Options:**
-    - URL only (basic analysis)
-    - URL + title + content (enhanced analysis)
-    - URL + screenshot (visual analysis)
-    - Full metadata (comprehensive analysis)
-    
-    **Returns:**
-    - Risk level assessment
-    - Detailed analysis explanation
-    - Recommended actions
-    - Content reuse indicator
-    """,
+analyze_v1_description = """
+Analyze website content for potential scam indicators using AI.
+
+**Features:**
+- URL and domain analysis
+- Content text analysis
+- Screenshot analysis (if provided)
+- SSL and security metadata
+- AI-powered risk assessment
+
+**Input Options:**
+- URL only (basic analysis)
+- URL + title + content (enhanced analysis)
+- URL + screenshot (visual analysis)
+- Full metadata (comprehensive analysis)
+
+**Returns:**
+- Risk level assessment
+- Detailed analysis explanation
+- Recommended actions
+- Content reuse indicator
+"""
+
+
+@router.post("/v1/analyze",
+             summary=analyze_v1_summary,
+             description=analyze_v1_description,
              response_description="Website analysis results with risk assessment")
-async def analyze_website(request: WebsiteAnalysisRequest):
+async def analyze_website_v1(request: WebsiteAnalysisRequest):
     # [Step 0] Read values from the request body
     try:
         url = request.url
@@ -173,9 +178,31 @@ async def analyze_website(request: WebsiteAnalysisRequest):
 
 # 2. Translate analysis function
 
+# V1 Translate endpoint
+translate_v1_summary = "Translate Website Analysis (v1)"
 
-@router.post("/translate")
-async def translate_website_analysis(request: WebsiteTranslationRequest):
+translate_v1_description = """
+Translate website analysis results to different languages.
+
+**Features:**
+- Multi-language translation support
+- Preserves original analysis accuracy
+- Maintains risk assessment integrity
+
+**Supported Languages:**
+- English (en)
+- Chinese (zh)
+- Malay (ms)
+- Thai (th)
+- Vietnamese (vi)
+"""
+
+
+@router.post("/v1/translate",
+             summary=translate_v1_summary,
+             description=translate_v1_description,
+             response_description="Translated website analysis results")
+async def translate_website_analysis_v1(request: WebsiteTranslationRequest):
     # [Step 0] Read values from the request body
     try:
         website_id = request.website_id

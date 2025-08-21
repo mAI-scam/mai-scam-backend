@@ -61,34 +61,39 @@ async def healthcheck():
 
 # 1. Analyze social media content
 
+# V1 Analyze endpoint
+analyze_v1_summary = "Analyze Social Media Post for Scam Detection (v1)"
 
-@router.post("/analyze",
-             summary="Analyze Social Media Post for Scam Detection",
-             description="""
-    Analyze social media content for potential scam indicators using AI.
-    
-    **Supported Platforms:**
-    - Facebook
-    - Instagram
-    - Twitter/X
-    - TikTok
-    - LinkedIn
-    
-    **Features:**
-    - Platform-specific scam detection
-    - Engagement metrics analysis
-    - URL and domain analysis
-    - Author credibility assessment
-    - AI-powered risk assessment
-    
-    **Returns:**
-    - Risk level assessment
-    - Platform-specific analysis
-    - Recommended actions
-    - Content reuse indicator
-    """,
+analyze_v1_description = """
+Analyze social media content for potential scam indicators using AI.
+
+**Supported Platforms:**
+- Facebook
+- Instagram
+- Twitter/X
+- TikTok
+- LinkedIn
+
+**Features:**
+- Platform-specific scam detection
+- Engagement metrics analysis
+- URL and domain analysis
+- Author credibility assessment
+- AI-powered risk assessment
+
+**Returns:**
+- Risk level assessment
+- Platform-specific analysis
+- Recommended actions
+- Content reuse indicator
+"""
+
+
+@router.post("/v1/analyze",
+             summary=analyze_v1_summary,
+             description=analyze_v1_description,
              response_description="Social media analysis results with risk assessment")
-async def analyze_social_media_post(request: SocialMediaAnalysisRequest):
+async def analyze_social_media_post_v1(request: SocialMediaAnalysisRequest):
     # [Step 0] Read values from the request body
     try:
         platform = request.platform
@@ -175,9 +180,31 @@ async def analyze_social_media_post(request: SocialMediaAnalysisRequest):
 
 # 2. Translate analysis function
 
+# V1 Translate endpoint
+translate_v1_summary = "Translate Social Media Analysis (v1)"
 
-@router.post("/translate")
-async def translate_social_media_analysis(request: SocialMediaTranslationRequest):
+translate_v1_description = """
+Translate social media analysis results to different languages.
+
+**Features:**
+- Multi-language translation support
+- Preserves original analysis accuracy
+- Maintains risk assessment integrity
+
+**Supported Languages:**
+- English (en)
+- Chinese (zh)
+- Malay (ms)
+- Thai (th)
+- Vietnamese (vi)
+"""
+
+
+@router.post("/v1/translate",
+             summary=translate_v1_summary,
+             description=translate_v1_description,
+             response_description="Translated social media analysis results")
+async def translate_social_media_analysis_v1(request: SocialMediaTranslationRequest):
     # [Step 0] Read values from the request body
     try:
         post_id = request.post_id
