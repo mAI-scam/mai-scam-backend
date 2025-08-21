@@ -1,3 +1,8 @@
-fastapi==0.115.13
-PyYAML==6.0.2
-uvicorn==0.34.3
+fastapi
+uvicorn
+pydantic>=2
+python-dotenv
+requests
+# Extras for non-Windows only (fine to include; uv will skip on Windows):
+uvloop; platform_system != "Windows"
+httptools; platform_system != "Windows"

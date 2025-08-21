@@ -2,3 +2,16 @@ APP_ENV: prd
 APP_API_VERSION: 0.0.1
 SERVER_HOST: 0.0.0.0
 SERVER_PORT: 8000
+
+# JWT Configuration
+JWT_SECRET_KEY: "prd-super-secret-jwt-key-change-in-production"
+JWT_ALGORITHM: "HS256"
+JWT_EXPIRY_HOURS: 6
+
+# API Key Configuration
+API_KEY_LENGTH: 32
+API_KEY_PREFIX: "mai_"
+
+# Debug Configuration
+DEBUG: "false"
+DEBUG_VERBOSE: 1 # 1=minimal, 2=normal, 3=verbose
