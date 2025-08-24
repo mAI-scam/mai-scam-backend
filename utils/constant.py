@@ -48,6 +48,7 @@ PUBLIC_ENDPOINTS = [
     "/redoc",
     "/openapi.json",
     "/health",
+    "/email/",
     "/debug/auth",
     "/auth/token",
     "/auth/api-key",
