@@ -40,6 +40,16 @@ class HealthResponse(BaseModel):
 async def healthcheck():
     return {"status": "OK"}
 
+@router.options("/")
+async def options_healthcheck():
+    """Handle OPTIONS requests for CORS preflight"""
+    return {"status": "OK"}
+
+@router.options("/v1/analyze")
+async def options_analyze():
+    """Handle OPTIONS requests for CORS preflight"""
+    return {"status": "OK"}
+
 # =============================================================================
 # 2. EMAIL ANALYSIS ENDPOINT
 # =============================================================================
@@ -140,11 +150,12 @@ async def detect_v1(request: EmailAnalysisRequest):
 
         # If target language analysis exists, return it
         if target_language in existing_analysis_data:
+            target_analysis = existing_analysis_data[target_language]
             return resp_200(
                 data={
-                    "email_id": str(existing_id),
-                    target_language: existing_analysis_data[target_language],
-                    "reused": True
+                    "risk_level": target_analysis["risk_level"],
+                    "reasons": target_analysis["analysis"],  # Map 'analysis' to 'reasons'
+                    "recommended_action": target_analysis["recommended_action"]
                 }
             )
 
@@ -156,12 +167,13 @@ async def detect_v1(request: EmailAnalysisRequest):
     # Save to database using centralized function
     email_id = await save_analysis_to_db(document, "email")
 
-    # [Step 5] Respond analysis in "target language" to user
+    # [Step 5] Respond analysis in "target language" to user  
+    target_analysis = analysis[target_language]
     return resp_200(
         data={
-            "email_id": email_id,
-            target_language: analysis[target_language],
-            "reused": False
+            "risk_level": target_analysis["risk_level"],
+            "reasons": target_analysis["analysis"],  # Map 'analysis' to 'reasons'
+            "recommended_action": target_analysis["recommended_action"]
         }
     )
 
@@ -238,7 +250,8 @@ async def translate_v1(request: EmailTranslationRequest):
     # [Step 4] Respond analysis in "target language" to user
     return resp_200(
         data={
-            "email_id": email_id,
-            target_language: target_language_analysis
+            "risk_level": target_language_analysis["risk_level"],
+            "reasons": target_language_analysis["analysis"],  # Map 'analysis' to 'reasons'
+            "recommended_action": target_language_analysis["recommended_action"]
         }
     )

@@ -14,8 +14,9 @@ INCLUDED ROUTERS:
 3. /email - Email analysis endpoints
 4. /socialmedia - Social media analysis endpoints
 5. /website - Website analysis endpoints
-6. /health - Health check endpoint
-7. /debug/auth - Debug authentication endpoint (development only)
+6. /api/v1/ocr - OCR (Optical Character Recognition) endpoints
+7. /health - Health check endpoint
+8. /debug/auth - Debug authentication endpoint (development only)
 
 SECURITY FEATURES:
 -----------------
@@ -42,7 +43,7 @@ curl -X POST "http://localhost:8000/email/analyze" \
 """
 
 from fastapi import APIRouter
-from apis import email, socialmedia, website, auth, main
+from apis import email, socialmedia, website, auth, main, ocr
 
 # Create main router
 router = APIRouter()
@@ -61,3 +62,4 @@ router.include_router(auth.router)
 router.include_router(email.router)
 router.include_router(socialmedia.router)
 router.include_router(website.router)
+router.include_router(ocr.router)

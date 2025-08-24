@@ -343,11 +343,14 @@ def configure_cors(app):
             "chrome-extension://*",  # Chrome extensions
             "moz-extension://*",     # Firefox extensions
             "http://localhost:3000",  # Local development
+            "http://localhost:*",    # All localhost ports
+            "http://127.0.0.1:*",    # All 127.0.0.1 ports
             "https://your-domain.com"  # Your production domain
         ],
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE"],
-        allow_headers=["*"],
+        allow_methods=["*"],  # Allow all methods
+        allow_headers=["*"],  # Allow all headers
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"  # Regex for local development
     )
 
 
