@@ -428,3 +428,66 @@ async def translate_analysis(base_language_analysis, base_language, target_langu
     json_response = parse_sealion_json(completion)
 
     return json_response
+
+
+# =============================================================================
+# 5. COMPREHENSIVE WEBSITE ANALYSIS FUNCTION (SINGLE LLM CALL)
+# =============================================================================
+
+async def analyze_website_comprehensive(
+    url: str,
+    title: str, 
+    content: str,
+    target_language: str,
+    signals: dict
+) -> dict:
+    """
+    Perform comprehensive website analysis with single LLM call.
+
+    This function combines language detection, scam analysis, and target language
+    output into one efficient Sea-Lion API call, reducing from 3 calls to 1 call.
+
+    Args:
+        url: Website URL to analyze
+        title: Website title/page title
+        content: Website text content  
+        target_language: Target language for analysis output
+        signals: Extracted auxiliary signals (domain, URLs, metadata, etc.)
+
+    Returns:
+        dict: Complete analysis results containing:
+            - detected_language: ISO-639-1 code of website content
+            - risk_level: "high", "medium", or "low" in target language
+            - analysis: Detailed analysis explanation in target language
+            - recommended_action: Suggested action in target language
+
+    Example:
+        result = await analyze_website_comprehensive(
+            url="https://fake-bank-login.com",
+            title="Secure Bank Login",
+            content="Enter your credentials to access...",
+            target_language="en",
+            signals=extracted_signals
+        )
+        # Returns: {
+        #   "detected_language": "en",
+        #   "risk_level": "high", 
+        #   "analysis": "This website shows multiple red flags...",
+        #   "recommended_action": "Do not enter credentials on this site..."
+        # }
+    """
+    aux_signals = json.dumps(signals or {}, ensure_ascii=False)
+    prompt = prompts["analyzeWebsiteComprehensive"].format(
+        target_language=target_language,
+        url=url,
+        title=title or "",
+        content=content or "",
+        aux_signals=aux_signals,
+        available_languages=", ".join(LANGUAGES)
+    )
+
+    # Single LLM call combining: language detection + scam analysis + target language output
+    completion = await call_sea_lion_llm(prompt=prompt)
+    json_response = parse_sealion_json(completion)
+
+    return json_response

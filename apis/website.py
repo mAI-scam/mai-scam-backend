@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, Dict, List, Any
 
 from models.customResponse import resp_200
-from utils.websiteUtils import detect_language, analyze_website_content, translate_analysis, extract_website_signals
+from utils.websiteUtils import detect_language, analyze_website_content, translate_analysis, extract_website_signals, analyze_website_comprehensive
 from utils.dbUtils import create_content_hash, save_analysis_to_db, retrieve_analysis_from_db, update_analysis_in_db, find_analysis_by_hash, prepare_website_document
 
 config = Setting()
@@ -51,6 +51,7 @@ class WebsiteAnalysis(BaseModel):
                          description="Detailed explanation of risk assessment")
     recommended_action: str = Field(...,
                                     description="Recommended action to take")
+    detected_language: str = Field(..., description="ISO-639-1 code of detected website language")
 
 
 class WebsiteAnalysisRequest(BaseModel):
@@ -120,16 +121,7 @@ async def analyze_website_v1(request: WebsiteAnalysisRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail="Invalid request body")
 
-    # [Step 1] Detect the base language of the website content
-    # Use title + content for language detection
-    text_for_language_detection = f"{title or ''} {content or ''}".strip()
-    if not text_for_language_detection:
-        # Fallback to English if no content provided
-        base_language = "en"
-    else:
-        base_language = await detect_language(text_for_language_detection)
-
-    # [Step 1.5] Extract auxiliary signals to support the analysis
+    # [Step 1] Extract auxiliary signals to support the analysis
     signals = extract_website_signals(
         url=url,
         title=title,
@@ -138,20 +130,25 @@ async def analyze_website_v1(request: WebsiteAnalysisRequest):
         metadata=metadata
     )
 
-    # [Step 2] Perform analysis in "base language"
-    base_language_analysis = await analyze_website_content(
-        url, title, content, base_language, signals
+    # [Step 2] Perform comprehensive analysis with single LLM call
+    # This combines: language detection + analysis + target language output
+    comprehensive_analysis = await analyze_website_comprehensive(
+        url=url,
+        title=title or "",
+        content=content or "",
+        target_language=target_language,
+        signals=signals
     )
+    
+    # Extract detected language and prepare analysis structure for database
+    base_language = comprehensive_analysis["detected_language"]
     analysis = {
-        base_language: base_language_analysis
+        target_language: {
+            "risk_level": comprehensive_analysis["risk_level"],
+            "analysis": comprehensive_analysis["analysis"], 
+            "recommended_action": comprehensive_analysis["recommended_action"]
+        }
     }
-
-    # [Step 3] If "target language" is not the "base language"
-    if base_language != target_language:
-        target_language_analysis = await translate_analysis(
-            base_language_analysis, base_language, target_language
-        )
-        analysis[target_language] = target_language_analysis
 
     # [Step 4] Create unique content hash for reusability
     content_hash = create_content_hash(
@@ -186,9 +183,10 @@ async def analyze_website_v1(request: WebsiteAnalysisRequest):
     # [Step 5] Respond analysis in "target language" to user
     return resp_200(
         data={
-            "website_id": website_id,
-            target_language: analysis[target_language],
-            "reused": False
+            "risk_level": comprehensive_analysis["risk_level"],
+            "reasons": comprehensive_analysis["analysis"],  # Map 'analysis' to 'reasons'
+            "recommended_action": comprehensive_analysis["recommended_action"],
+            "detected_language": comprehensive_analysis["detected_language"]
         }
     )
 
