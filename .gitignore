@@ -1,4 +1,6 @@
 /env/dev.yaml
 /.venv
+/venv
+.env
 __pycache__/
 *.pyc
