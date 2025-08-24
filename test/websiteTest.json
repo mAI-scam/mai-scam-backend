@@ -1,0 +1,78 @@
+{
+  "analyze": {
+    "1": {
+      "datetime_created": "2025-08-16T14:30:00Z",
+      "body": {
+        "url": "https://login-paypal-secure.xyz/verify",
+        "title": "PayPal - Sign In to Your Account",
+        "content": "Welcome to PayPal. Please sign in to your account to continue. Enter your email address and password below. For your security, we may ask you to verify your identity. If you don't have an account, you can create one for free. Contact us via WhatsApp: +1-800-123-4567 for immediate assistance.",
+        "target_language": "en",
+        "screenshot_data": "base64_encoded_screenshot_data_here",
+        "metadata": {
+          "ssl_valid": false,
+          "ssl_expired": true,
+          "domain_age_days": 15,
+          "is_new_domain": true
+        }
+      },
+      "ground_truth_risk": "high"
+    },
+    "2": {
+      "datetime_created": "2025-08-16T14:30:00Z",
+      "body": {
+        "url": "https://www.irs-tax-refund.claim/verify-identity",
+        "title": "IRS Tax Refund - Verify Your Identity",
+        "content": "Internal Revenue Service - Tax Refund Verification. Your tax refund of $2,847.50 is ready for processing. To receive your refund, please verify your identity by entering your Social Security Number, date of birth, and bank account information. This verification is required by law. Failure to complete verification within 24 hours will result in refund cancellation.",
+        "target_language": "en",
+        "screenshot_data": "base64_encoded_screenshot_data_here",
+        "metadata": {
+          "ssl_valid": true,
+          "ssl_expired": false,
+          "domain_age_days": 10,
+          "is_new_domain": true
+        }
+      },
+      "ground_truth_risk": "medium"
+    },
+    "3": {
+      "datetime_created": "2025-08-16T14:30:00Z",
+      "body": {
+        "url": "https://www.amazon.com/dp/B08N5WRWNW",
+        "title": "Amazon.com: Apple iPhone 12 Pro Max, 128GB, Pacific Blue - Unlocked",
+        "content": "Buy Apple iPhone 12 Pro Max, 128GB, Pacific Blue - Unlocked (Renewed): Cell Phones & Accessories - Amazon.com ✓ FREE DELIVERY possible on eligible purchases. Customer reviews, product specifications, and detailed information available. Secure checkout with multiple payment options.",
+        "target_language": "zh",
+        "screenshot_data": null,
+        "metadata": {
+          "ssl_valid": true,
+          "ssl_expired": false,
+          "domain_age_days": 10950,
+          "is_new_domain": false
+        }
+      },
+      "ground_truth_risk": "low"
+    }
+  },
+  "translate": {
+    "1": {
+      "datetime_created": "2025-08-16T14:30:00Z",
+      "body": {
+        "website_id": "sample_website_id_123",
+        "target_language": "zh"
+      }
+    },
+    "2": {
+      "datetime_created": "2025-08-16T14:30:00Z",
+      "body": {
+        "website_id": "sample_website_id_456",
+        "target_language": "ms"
+      }
+    },
+    "3": {
+      "datetime_created": "2025-08-16T14:30:00Z",
+      "body": {
+        "website_id": "sample_website_id_789",
+        "target_language": "vi"
+      }
+    }
+  }
+}
