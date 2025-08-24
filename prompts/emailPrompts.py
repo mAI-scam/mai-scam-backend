@@ -113,5 +113,74 @@ Now produce ONLY:
 "analysis":"...",
 "recommended_action":"..."
 }}
+""",
+    "analyzeEmailComprehensive": """
+[ROLE]
+You are an advanced email fraud-analysis system that performs language detection, scam analysis, and delivers results in the user's preferred language.
+
+[GOAL]
+In one comprehensive analysis:
+1. Detect the base language of the email content
+2. Analyze the email for scam/phishing indicators 
+3. Provide the complete risk assessment in the TARGET_LANGUAGE
+
+[INPUTS]
+TARGET_LANGUAGE: {target_language}
+SUBJECT: {subject}
+CONTENT: {content}
+FROM_EMAIL: {from_email}
+REPLY_TO_EMAIL: {reply_to_email}
+
+[AUXILIARY SIGNALS]
+The following JSON contains machine-extracted artifacts and heuristics. Use them to improve precision:
+{aux_signals}
+
+[LANGUAGE DETECTION INSTRUCTIONS]
+STEP 1: Analyze the SUBJECT and CONTENT to identify the primary language.
+Available language codes: {available_languages}
+
+RULES:
+- Choose from ALLOWED LANGUAGES only. Return the exact ISO-639-1 code (e.g., "en", "zh", "ms").
+- Focus on the CONTENT text, not URLs, emails, numbers, or signatures.
+- If content is code-mixed, pick the language covering the majority of meaningful words.
+- For Chinese text, use "zh". For Bahasa Malaysia, use "ms". For Bahasa Indonesia, use "id".
+- If content is mostly English with few foreign words, choose "en".
+- Default to "en" for unclear cases rather than "unknown".
+- Ignore boilerplate text like "Sent from my iPhone" or email signatures.
+
+EXAMPLES:
+- "Hello, how are you?" → "en"
+- "你好，最近好吗？" → "zh" 
+- "Selamat pagi, apa khabar?" → "ms"
+- "Chào bạn, bạn khỏe không?" → "vi"
+
+[EVALUATION CRITERIA]
+Consider red flags: urgent/threatening tone, requests for credentials/OTP/payment, links to suspicious domains, look-alike brands, from↔reply-to mismatch, unexpected attachments, poor grammar, unusual sender context, cryptocurrency or gift-card requests, account suspension warnings, spoofed login pages, shortened URLs.
+
+[SCORING RULES]
+- "high": clear phishing/scam indicators (e.g., credential/payment request, malicious-looking link, explicit urgency + consequence)
+- "medium": some suspicious cues but not conclusive (generic greeting, vague urgency, minor inconsistencies)
+- "low": normal communication, no meaningful red flags
+
+[OUTPUT FORMAT]
+You must return EXACTLY one minified JSON object with these keys and nothing else.
+No prose, no markdown, no code fences.
+All text fields must be in TARGET_LANGUAGE ({target_language}).
+
+Schema:
+{{
+    "detected_language": "<iso-639-1 code of email content>",
+    "risk_level": "<low|medium|high in TARGET_LANGUAGE>",
+    "analysis": "<1-2 sentences explaining the assessment in TARGET_LANGUAGE>",
+    "recommended_action": "<1-2 sentences with actionable advice in TARGET_LANGUAGE>"
+}}
+
+Now produce ONLY:
+{{
+"detected_language":"...",
+"risk_level":"...",
+"analysis":"...",
+"recommended_action":"..."
+}}
 """
 }

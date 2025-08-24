@@ -77,7 +77,7 @@ async def call_sea_lion_llm(
     
     for attempt in range(max_retries + 1):
         try:
-            logger.info(f"🦁 Calling Sea-Lion API (attempt {attempt + 1}/{max_retries + 1})")
+            logger.info("🦁 Calling Sea-Lion API for comprehensive analysis")
             
             client = get_sea_lion_client()
             
@@ -99,7 +99,7 @@ async def call_sea_lion_llm(
                 },
             )
             
-            logger.info("✅ Sea-Lion API call successful")
+            logger.info("✅ Sea-Lion API comprehensive analysis successful")
             return completion
             
         except Exception as e:

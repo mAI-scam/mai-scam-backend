@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 
 from models.customResponse import resp_200
-from utils.emailUtils import detect_language, analyze_email, translate_analysis, extract_signals
+from utils.emailUtils import detect_language, analyze_email, translate_analysis, extract_signals, analyze_email_comprehensive
 from utils.dbUtils import create_content_hash, save_analysis_to_db, retrieve_analysis_from_db, update_analysis_in_db, find_analysis_by_hash, prepare_email_document
 
 config = Setting()
@@ -61,6 +61,7 @@ class EmailAnalysis(BaseModel):
                          description="Detailed explanation of risk assessment")
     recommended_action: str = Field(...,
                                     description="Recommended action to take")
+    detected_language: str = Field(..., description="ISO-639-1 code of detected email language")
 
 
 class EmailAnalysisRequest(BaseModel):
@@ -119,23 +120,30 @@ async def detect_v1(request: EmailAnalysisRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail="Invalid request body")
 
-    # [Step 1] Detect the base language of the email content
-    base_language = await detect_language(content)
-
-    # [Step 1.5] Extract auxiliary signals to support the agent
+    # [Step 1] Extract auxiliary signals to support the analysis
     signals = extract_signals(title=subject, content=content,
                               from_email=from_email, reply_to_email=reply_to_email or "")
 
-    # [Step 2] Perform analysis in "base language"
-    base_language_analysis = await analyze_email(subject, content, base_language, signals)
+    # [Step 2] Perform comprehensive analysis with single LLM call
+    # This combines: language detection + analysis + target language output
+    comprehensive_analysis = await analyze_email_comprehensive(
+        subject=subject,
+        content=content, 
+        from_email=from_email,
+        reply_to_email=reply_to_email or "",
+        target_language=target_language,
+        signals=signals
+    )
+    
+    # Extract detected language and prepare analysis structure for database
+    base_language = comprehensive_analysis["detected_language"]
     analysis = {
-        base_language: base_language_analysis
+        target_language: {
+            "risk_level": comprehensive_analysis["risk_level"],
+            "analysis": comprehensive_analysis["analysis"], 
+            "recommended_action": comprehensive_analysis["recommended_action"]
+        }
     }
-
-    # [Step 3] If "target language" is not the "base language"
-    if base_language != target_language:
-        target_language_analysis = await translate_analysis(base_language_analysis, base_language, target_language)
-        analysis[target_language] = target_language_analysis
 
     # [Step 4] Create unique content hash for reusability
     content_hash = create_content_hash(
@@ -168,12 +176,12 @@ async def detect_v1(request: EmailAnalysisRequest):
     email_id = await save_analysis_to_db(document, "email")
 
     # [Step 5] Respond analysis in "target language" to user  
-    target_analysis = analysis[target_language]
     return resp_200(
         data={
-            "risk_level": target_analysis["risk_level"],
-            "reasons": target_analysis["analysis"],  # Map 'analysis' to 'reasons'
-            "recommended_action": target_analysis["recommended_action"]
+            "risk_level": comprehensive_analysis["risk_level"],
+            "reasons": comprehensive_analysis["analysis"],  # Map 'analysis' to 'reasons'
+            "recommended_action": comprehensive_analysis["recommended_action"],
+            "detected_language": comprehensive_analysis["detected_language"]
         }
     )
 
