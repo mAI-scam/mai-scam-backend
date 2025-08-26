@@ -50,15 +50,62 @@ from utils.constant import (
     SUSPICIOUS_TLDS, URL_SHORTENERS, SOCIAL_MEDIA_KEYWORDS,
     LOW_ENGAGEMENT_RATE_THRESHOLD, HIGH_ENGAGEMENT_RATE_THRESHOLD, MIN_PHONE_LENGTH
 )
-from utils.llmUtils import parse_sealion_json, call_sea_lion_llm
+from utils.llmUtils import parse_sealion_json, call_sea_lion_llm, call_sea_lion_v4_llm
 from prompts.socialmediaPrompts import prompts
 import re
 import json
+import base64
+import os
 
 
 # =============================================================================
 # HELPER FUNCTIONS FOR SIGNAL EXTRACTION
 # =============================================================================
+
+def encode_image_to_base64(image_path: str) -> str:
+    """
+    Encode image to base64 string for multimodal AI analysis.
+    
+    Args:
+        image_path: Path to the image file
+        
+    Returns:
+        str: Base64 encoded image string
+        
+    Raises:
+        FileNotFoundError: If the image file doesn't exist
+        Exception: If encoding fails
+        
+    Example:
+        base64_image = encode_image_to_base64("test-scam.jpg")
+    """
+    if not os.path.exists(image_path):
+        raise FileNotFoundError(f"Image file not found: {image_path}")
+    
+    try:
+        with open(image_path, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode('utf-8')
+    except Exception as e:
+        raise Exception(f"Failed to encode image {image_path}: {str(e)}")
+
+
+def decode_base64_to_image(base64_string: str, output_path: str) -> None:
+    """
+    Decode base64 string to image file (utility for testing).
+    
+    Args:
+        base64_string: Base64 encoded image string
+        output_path: Path where to save the decoded image
+        
+    Raises:
+        Exception: If decoding fails
+    """
+    try:
+        image_data = base64.b64decode(base64_string)
+        with open(output_path, "wb") as image_file:
+            image_file.write(image_data)
+    except Exception as e:
+        raise Exception(f"Failed to decode base64 to image: {str(e)}")
 
 def _extract_urls(text: str) -> list:
     """
@@ -356,6 +403,184 @@ async def analyze_social_media_content(platform: str, content: str, base_languag
     completion = await call_sea_lion_llm(prompt=prompt)
     json_response = parse_sealion_json(completion)
 
+    return json_response
+
+
+# =============================================================================
+# 3.5. MULTIMODAL SOCIAL MEDIA ANALYSIS FUNCTION (v2 with Sea-Lion v4)
+# =============================================================================
+
+async def analyze_social_media_multimodal_v2(
+    platform: str, 
+    content: str, 
+    base64_image: str, 
+    target_language: str, 
+    signals: dict | None = None
+) -> dict:
+    """
+    Perform comprehensive multimodal social media analysis using Sea-Lion v4 LLM.
+    
+    This function uses the Sea-Lion v4 LLM to analyze both text content and images
+    for scam indicators, providing a more comprehensive analysis that combines
+    textual and visual cues.
+    
+    Args:
+        platform: Social media platform (e.g., "facebook", "instagram", "twitter")
+        content: Post content/text
+        base64_image: Base64 encoded image string
+        target_language: Target language for analysis output
+        signals: Extracted auxiliary signals (optional)
+        
+    Returns:
+        dict: Analysis results containing:
+            - detected_language: Detected language of the content
+            - risk_level: "high", "medium", or "low"
+            - analysis: Detailed analysis explanation covering both text and image
+            - recommended_action: Suggested action for the user
+            - image_analysis: Specific findings from image analysis
+            - text_analysis: Specific findings from text analysis
+            
+    Example:
+        analysis = await analyze_social_media_multimodal_v2(
+            platform="facebook",
+            content="Win a free iPhone! Click here to claim...",
+            base64_image="iVBORw0KGgoAAAANSUhEUgAA...",
+            target_language="en",
+            signals=extracted_signals
+        )
+    """
+    from models.clients import get_sea_lion_v4_client
+    
+    aux_signals = json.dumps(signals or {}, ensure_ascii=False)
+    
+    # Create multimodal prompt for Sea-Lion v4
+    text_prompt = f"""
+You are an expert social media scam detector analyzing both text content and visual content from a {platform} post. 
+
+TEXT CONTENT: {content}
+
+AUXILIARY SIGNALS: {aux_signals}
+
+TASK: Analyze both the provided image and text content for scam indicators. Consider:
+
+1. IMAGE ANALYSIS:
+   - Visual elements that suggest scams (fake logos, poor design, misleading claims)
+   - Text within the image (OCR any visible text and analyze it)
+   - Brand impersonation attempts
+   - Visual quality and professionalism
+   - Screenshots of fake transactions or testimonials
+
+2. TEXT ANALYSIS:
+   - Urgency tactics and emotional manipulation
+   - Financial promises or requests
+   - Poor grammar/spelling (potential translation artifacts)
+   - Suspicious links or contact information
+   - Platform-specific scam patterns
+
+3. COMBINED ANALYSIS:
+   - How the image and text work together to create a scam narrative
+   - Inconsistencies between visual and textual claims
+   - Overall credibility assessment
+
+LANGUAGE DETECTION: First detect the primary language of the text content from these options: {', '.join(LANGUAGES)}
+
+OUTPUT: Provide your analysis in {target_language} language as a JSON object with this exact structure:
+{{
+    "detected_language": "language_code",
+    "risk_level": "high|medium|low",
+    "analysis": "Comprehensive analysis covering both image and text elements, explaining scam indicators found",
+    "recommended_action": "Specific action recommendation for users",
+    "image_analysis": "Specific findings from the image analysis",
+    "text_analysis": "Specific findings from the text content analysis"
+}}
+"""
+    
+    try:
+        client = get_sea_lion_v4_client()
+        
+        # Create multimodal message with both image and text
+        completion = client.chat.completions.create(
+            model="aisingapore/Gemma-SEA-LION-v4-27B-IT",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": text_prompt
+                        }
+                    ]
+                }
+            ]
+        )
+        
+        json_response = parse_sealion_json(completion)
+        return json_response
+        
+    except Exception as e:
+        # Fallback to text-only analysis if multimodal fails
+        print(f"Multimodal analysis failed, falling back to text-only: {str(e)}")
+        return await analyze_social_media_content_v2(platform, content, target_language, signals)
+
+
+async def analyze_social_media_content_v2(
+    platform: str, 
+    content: str, 
+    target_language: str, 
+    signals: dict | None = None
+) -> dict:
+    """
+    Perform comprehensive social media analysis using Sea-Lion v4 LLM (text-only fallback).
+    
+    This is a v2 version that uses Sea-Lion v4 and provides comprehensive analysis
+    including language detection in a single call.
+    
+    Args:
+        platform: Social media platform
+        content: Post content
+        target_language: Target language for analysis output
+        signals: Extracted auxiliary signals (optional)
+        
+    Returns:
+        dict: Analysis results with detected_language, risk_level, analysis, recommended_action
+    """
+    aux_signals = json.dumps(signals or {}, ensure_ascii=False)
+    
+    prompt = f"""
+You are an expert social media scam detector. Analyze the following {platform} post for scam indicators.
+
+CONTENT: {content}
+
+AUXILIARY SIGNALS: {aux_signals}
+
+TASK:
+1. LANGUAGE DETECTION: First detect the primary language from these options: {', '.join(LANGUAGES)}
+2. SCAM ANALYSIS: Analyze for scam indicators including:
+   - Financial promises or requests
+   - Urgency tactics and emotional manipulation
+   - Poor grammar/spelling
+   - Suspicious links or contact information
+   - Platform-specific scam patterns
+   
+OUTPUT: Provide analysis in {target_language} language as JSON:
+{{
+    "detected_language": "language_code",
+    "risk_level": "high|medium|low", 
+    "analysis": "Detailed explanation of findings",
+    "recommended_action": "Specific action recommendation",
+    "image_analysis": "N/A - text-only analysis",
+    "text_analysis": "Specific findings from text analysis"
+}}
+"""
+    
+    completion = await call_sea_lion_v4_llm(prompt=prompt)
+    json_response = parse_sealion_json(completion)
     return json_response
 
 

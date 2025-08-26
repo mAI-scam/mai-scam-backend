@@ -99,15 +99,12 @@ async def health():
         dict: Health status information
     """
     return health_success_response(
-        data={
-            "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
-            "version": "1.0.0",
-            "services": {
-                "api": "running",
-                "database": "connected",
-                "ai_models": "available"
-            }
+        service="MAI Scam Detection API",
+        version="1.0.0",
+        components={
+            "api": "running",
+            "database": "connected", 
+            "ai_models": "available"
         }
     )
 

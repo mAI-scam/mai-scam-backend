@@ -9,6 +9,7 @@ ENDPOINTS:
 1. GET /socialmedia/ - Social Media API health check
 2. POST /socialmedia/v1/analyze - Analyze social media post for scam detection (v1)
 3. POST /socialmedia/v1/translate - Translate social media analysis to different language (v1)
+4. POST /socialmedia/v2/analyze - Analyze social media post with multimodal support (v2)
 """
 
 from fastapi import APIRouter, Request, HTTPException, UploadFile, File
@@ -20,7 +21,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, Dict, List, Any
 
 from models.customResponse import resp_200
-from utils.socialmediaUtils import detect_language, analyze_social_media_content, translate_analysis, extract_social_media_signals
+from utils.socialmediaUtils import detect_language, analyze_social_media_content, translate_analysis, extract_social_media_signals, analyze_social_media_multimodal_v2, encode_image_to_base64
 from utils.dbUtils import create_content_hash, save_analysis_to_db, retrieve_analysis_from_db, update_analysis_in_db, find_analysis_by_hash, prepare_social_media_document
 
 config = Setting()
@@ -60,6 +61,21 @@ class SocialMediaAnalysisRequest(BaseModel):
     author_username: str = Field(..., description="Author's username")
     target_language: str = Field(
         ..., description="Target language for analysis (en, zh, ms, th, vi)")
+    post_url: Optional[str] = Field(None, description="URL of the post")
+    author_followers_count: Optional[int] = Field(
+        None, description="Number of followers")
+    engagement_metrics: Optional[Dict[str, Any]] = Field(
+        None, description="Engagement metrics (likes, shares, comments)")
+
+
+class SocialMediaAnalysisV2Request(BaseModel):
+    platform: str = Field(
+        ..., description="Social media platform (facebook, instagram, twitter, tiktok, linkedin)")
+    content: str = Field(..., description="Post content/text")
+    author_username: str = Field(..., description="Author's username")
+    target_language: str = Field(
+        ..., description="Target language for analysis (en, zh, ms, th, vi)")
+    image: Optional[str] = Field(None, description="Base64 encoded image string for multimodal analysis")
     post_url: Optional[str] = Field(None, description="URL of the post")
     author_followers_count: Optional[int] = Field(
         None, description="Number of followers")
@@ -272,5 +288,248 @@ async def translate_social_media_analysis_v1(request: SocialMediaTranslationRequ
         data={
             "post_id": post_id,
             target_language: target_language_analysis
+        }
+    )
+
+# =============================================================================
+# 4. SOCIAL MEDIA ANALYSIS V2 ENDPOINT (MULTIMODAL)
+# =============================================================================
+
+
+class SocialMediaAnalysisV2Response(BaseModel):
+    success: bool = Field(...,
+                          description="Whether the request was successful")
+    message: str = Field(..., description="Response message")
+    data: Dict[str, Any] = Field(
+        ..., description="Analysis results including risk level, reasons, recommended action, and multimodal analysis")
+    timestamp: str = Field(..., description="Response timestamp")
+    status_code: int = Field(..., description="HTTP status code")
+
+
+# V2 Analyze endpoint
+analyze_v2_summary = "Analyze Social Media Post for Scam Detection with Multimodal Support (v2)"
+
+analyze_v2_description = """
+Analyze social media content for potential scam indicators using AI with multimodal support (Sea-Lion v4).
+
+**V2 Features:**
+- **Multimodal Analysis**: Support for both text and image analysis
+- **Sea-Lion v4 Model**: Upgraded to aisingapore/Gemma-SEA-LION-v4-27B-IT
+- **Base64 Image Input**: Accept images as base64 encoded strings
+- **Enhanced Analysis**: Combined text and visual scam detection
+- **Image OCR**: Extract and analyze text within images
+- **Visual Scam Detection**: Identify fake logos, poor design, misleading claims
+
+**Supported Platforms:**
+- Facebook
+- Instagram
+- Twitter/X
+- TikTok
+- LinkedIn
+
+**New Capabilities:**
+- Visual brand impersonation detection
+- Fake screenshot analysis
+- Combined text-image scam narrative detection
+- OCR-based text extraction from images
+- Visual quality assessment
+
+**Response Format:**
+```json
+{
+  "success": true,
+  "message": "Request processed successfully",
+  "data": {
+    "post_id": "64a7f123456789abcdef0123",
+    "en": {
+      "risk_level": "high|medium|low",
+      "analysis": "Comprehensive analysis covering both text and image elements",
+      "recommended_action": "Specific action recommendation for users",
+      "image_analysis": "Specific findings from image analysis (NEW in v2)",
+      "text_analysis": "Specific findings from text analysis (NEW in v2)"
+    },
+    "reused": false,
+    "version": "v2",
+    "multimodal": true
+  },
+  "timestamp": "2025-08-26T13:30:45.123456Z",
+  "status_code": 200
+}
+```
+
+**Response Fields:**
+- **`success`**: Whether the request was successful
+- **`message`**: Response message
+- **`data.post_id`**: Unique identifier for the analyzed post
+- **`data.[language]`**: Analysis results in requested language
+- **`data.[language].risk_level`**: Risk assessment (high/medium/low)
+- **`data.[language].analysis`**: 🆕 Enhanced comprehensive analysis
+- **`data.[language].recommended_action`**: Specific user recommendations
+- **`data.[language].image_analysis`**: 🆕 Visual scam detection results
+- **`data.[language].text_analysis`**: 🆕 Text content analysis results
+- **`data.reused`**: Whether results were retrieved from cache
+- **`data.version`**: API version identifier ("v2")
+- **`data.multimodal`**: 🆕 Whether image analysis was performed
+- **`timestamp`**: ISO format response timestamp
+- **`status_code`**: HTTP status code
+
+**Example Multimodal Response:**
+```json
+{
+  "success": true,
+  "message": "Request processed successfully",
+  "data": {
+    "post_id": "64a7f123456789abcdef0123",
+    "en": {
+      "risk_level": "high",
+      "analysis": "This Facebook post exhibits multiple scam characteristics. The visual elements (logos, promotional design) combined with text promising unrealistic returns create a deceptive gambling promotion.",
+      "recommended_action": "Do not engage with this post. Report to Facebook and block the account.",
+      "image_analysis": "Features BK8 and CMD368 gambling logos with professional design intended to appear legitimate. Contains promotional button with foreign text and USD 100 offer.",
+      "text_analysis": "Uses classic scam tactics: promise of money, urgency language, and promotional gambling content without clear terms."
+    },
+    "reused": false,
+    "version": "v2",
+    "multimodal": true
+  },
+  "timestamp": "2025-08-26T13:30:45.123456Z",
+  "status_code": 200
+}
+```
+
+**Returns:**
+- Enhanced multimodal analysis (text + image)
+- Detailed visual and textual scam detection
+- Platform-specific risk assessment
+- Comprehensive recommendations
+- Content reuse indicators
+"""
+
+
+@router.post("/v2/analyze",
+             summary=analyze_v2_summary,
+             description=analyze_v2_description,
+             response_model=SocialMediaAnalysisV2Response,
+             response_description="Social media multimodal analysis results with risk assessment using Sea-Lion v4")
+async def analyze_social_media_post_v2(request: SocialMediaAnalysisV2Request):
+    """
+    V2 Social media analysis endpoint with multimodal support using Sea-Lion v4 model.
+    
+    This endpoint can analyze both text content and images for comprehensive scam detection.
+    If an image is provided, it performs multimodal analysis. Otherwise, it falls back to 
+    enhanced text-only analysis using Sea-Lion v4.
+    """
+    # [Step 0] Read values from the request body
+    try:
+        platform = request.platform
+        content = request.content
+        author_username = request.author_username
+        target_language = request.target_language
+        image_base64 = request.image
+        post_url = request.post_url
+        author_followers_count = request.author_followers_count
+        engagement_metrics = request.engagement_metrics
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid request body")
+
+    # [Step 1] Extract auxiliary signals to support the analysis
+    signals = extract_social_media_signals(
+        platform=platform,
+        content=content,
+        author_username=author_username,
+        post_url=post_url,
+        author_followers_count=author_followers_count,
+        engagement_metrics=engagement_metrics
+    )
+
+    # [Step 2] Perform multimodal or text-only analysis based on image availability
+    if image_base64:
+        # Multimodal analysis with Sea-Lion v4
+        comprehensive_analysis = await analyze_social_media_multimodal_v2(
+            platform=platform,
+            content=content,
+            base64_image=image_base64,
+            target_language=target_language,
+            signals=signals
+        )
+    else:
+        # Text-only analysis with Sea-Lion v4
+        from utils.socialmediaUtils import analyze_social_media_content_v2
+        comprehensive_analysis = await analyze_social_media_content_v2(
+            platform=platform,
+            content=content,
+            target_language=target_language,
+            signals=signals
+        )
+
+    # Extract detected language and prepare analysis structure for database
+    detected_language = comprehensive_analysis.get("detected_language", target_language)
+    analysis = {
+        target_language: {
+            "risk_level": comprehensive_analysis.get("risk_level"),
+            "analysis": comprehensive_analysis.get("analysis"),
+            "recommended_action": comprehensive_analysis.get("recommended_action"),
+            "image_analysis": comprehensive_analysis.get("image_analysis"),
+            "text_analysis": comprehensive_analysis.get("text_analysis")
+        }
+    }
+
+    # [Step 3] Create unique content hash for reusability (include image in hash if present)
+    content_data = {
+        "platform": platform,
+        "content": content,
+        "author_username": author_username,
+        "post_url": post_url,
+        "has_image": bool(image_base64)
+    }
+    content_hash = create_content_hash("socialmedia", **content_data)
+
+    # [Step 4] Check if we already have analysis for this content
+    existing_analysis = await find_analysis_by_hash(content_hash, "socialmedia")
+    if existing_analysis:
+        # Return existing analysis if available
+        existing_id = existing_analysis.get('_id')
+        existing_analysis_data = existing_analysis.get('analysis', {})
+
+        # If target language analysis exists, return it
+        if target_language in existing_analysis_data:
+            return resp_200(
+                data={
+                    "post_id": str(existing_id),
+                    target_language: existing_analysis_data[target_language],
+                    "reused": True,
+                    "version": "v2",
+                    "multimodal": bool(image_base64)
+                }
+            )
+
+    # [Step 5] Store content and analysis in database
+    document = {
+        "platform": platform,
+        "content": content,
+        "author_username": author_username,
+        "post_url": post_url,
+        "author_followers_count": author_followers_count,
+        "engagement_metrics": engagement_metrics or {},
+        "base_language": detected_language,
+        "analysis": analysis,
+        "signals": signals,
+        "content_hash": content_hash,
+        "version": "v2",
+        "multimodal": bool(image_base64),
+        "has_image": bool(image_base64)
+    }
+
+    # Save to database using centralized function
+    post_id = await save_analysis_to_db(document, "socialmedia")
+
+    # [Step 6] Respond analysis in "target language" to user
+    return resp_200(
+        data={
+            "post_id": post_id,
+            target_language: analysis[target_language],
+            "reused": False,
+            "version": "v2",
+            "multimodal": bool(image_base64)
         }
     )
