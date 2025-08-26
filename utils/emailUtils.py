@@ -47,7 +47,7 @@ from utils.constant import (
     LANGUAGES, URL_PATTERN, EMAIL_PATTERN, PHONE_PATTERN,
     SUSPICIOUS_TLDS, URL_SHORTENERS, EMAIL_KEYWORDS, MIN_PHONE_LENGTH
 )
-from utils.llmUtils import parse_sealion_json, call_sea_lion_llm
+from utils.llmUtils import parse_sealion_json, call_sea_lion_llm, call_sea_lion_v4_llm
 from prompts.emailPrompts import prompts
 import re
 import json
@@ -406,6 +406,73 @@ async def analyze_email_comprehensive(
 
     # Single LLM call combining: language detection + scam analysis + target language output
     completion = await call_sea_lion_llm(prompt=prompt)
+    json_response = parse_sealion_json(completion)
+
+    return json_response
+
+
+# =============================================================================
+# EMAIL V2 COMPREHENSIVE ANALYSIS (SEA-LION V4)
+# =============================================================================
+
+async def analyze_email_comprehensive_v2(
+    subject: str, 
+    content: str, 
+    from_email: str, 
+    reply_to_email: str, 
+    target_language: str, 
+    signals: dict
+) -> dict:
+    """
+    Perform comprehensive email analysis with single SEA-LION v4 LLM call.
+    
+    This function analyzes email content for scam indicators using the upgraded
+    SEA-LION v4 model without reasoning toggle functionality.
+    
+    Args:
+        subject: Email subject line
+        content: Email body/content  
+        from_email: Sender email address
+        reply_to_email: Reply-to email address
+        target_language: Target language for analysis output
+        signals: Extracted auxiliary signals
+
+    Returns:
+        dict: Complete analysis results containing:
+            - detected_language: ISO-639-1 code of email content
+            - risk_level: "high", "medium", or "low" in target language
+            - analysis: Detailed analysis explanation in target language
+            - recommended_action: Suggested action in target language
+
+    Example:
+        result = await analyze_email_comprehensive_v2(
+            subject="Account Suspension Notice",
+            content="Your account has been suspended...",
+            from_email="support@bank.com",
+            reply_to_email="noreply@bank.com", 
+            target_language="en",
+            signals=extracted_signals
+        )
+        # Returns: {
+        #   "detected_language": "en",
+        #   "risk_level": "high", 
+        #   "analysis": "This email shows multiple red flags...",
+        #   "recommended_action": "Do not click any links..."
+        # }
+    """
+    aux_signals = json.dumps(signals or {}, ensure_ascii=False)
+    prompt = prompts["analyzeEmailComprehensive"].format(
+        target_language=target_language,
+        subject=subject,
+        content=content,
+        from_email=from_email,
+        reply_to_email=reply_to_email or "",
+        aux_signals=aux_signals,
+        available_languages=", ".join(LANGUAGES)
+    )
+
+    # Single SEA-LION v4 LLM call combining: language detection + scam analysis + target language output
+    completion = await call_sea_lion_v4_llm(prompt=prompt)
     json_response = parse_sealion_json(completion)
 
     return json_response

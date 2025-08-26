@@ -15,8 +15,9 @@ INCLUDED ROUTERS:
 4. /socialmedia - Social media analysis endpoints
 5. /website - Website analysis endpoints
 6. /api/v1/ocr - OCR (Optical Character Recognition) endpoints
-7. /health - Health check endpoint
-8. /debug/auth - Debug authentication endpoint (development only)
+7. /email/v2/analyze - V2 Email analysis endpoint (SEA-LION v4)
+8. /health - Health check endpoint
+9. /debug/auth - Debug authentication endpoint (development only)
 
 SECURITY FEATURES:
 -----------------

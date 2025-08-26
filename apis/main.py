@@ -58,7 +58,8 @@ async def root():
                 "authentication": "/api/v1/auth",
                 "email_analysis": "/api/v1/email",
                 "social_media_analysis": "/api/v1/socialmedia",
-                "website_analysis": "/api/v1/website"
+                "website_analysis": "/api/v1/website",
+                "v2_email_analysis": "/email/v2/analyze"
             },
             "documentation": {
                 "swagger": "/docs",
@@ -174,3 +175,4 @@ async def debug_auth(request: Request):
             },
             message="Authentication error"
         )
+

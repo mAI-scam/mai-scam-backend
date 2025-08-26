@@ -9,8 +9,9 @@ TABLE OF CONTENTS:
 
 EXPORTED FUNCTIONS:
 ------------------
-1. call_sea_lion_llm
-2. parse_sealion_json
+1. call_sea_lion_llm (v3.5)
+2. call_sea_lion_v4_llm (v4)
+3. parse_sealion_json
 
 USAGE EXAMPLES:
 --------------
@@ -32,7 +33,7 @@ json_response = parse_sealion_json(completion)
 import json
 import re
 import logging
-from models.clients import get_sea_lion_client
+from models.clients import get_sea_lion_client, get_sea_lion_v4_client
 from fastapi import HTTPException
 
 
@@ -156,6 +157,123 @@ async def call_sea_lion_llm(
     raise HTTPException(
         status_code=500, 
         detail="Unexpected error occurred while calling Sea-Lion API. Please try again."
+    )
+
+
+# =============================================================================
+# 1.2. SEA-LION V4 LLM INTERACTION FUNCTION
+# =============================================================================
+
+async def call_sea_lion_v4_llm(
+    prompt: str,
+    model: str = "aisingapore/Gemma-SEA-LION-v4-27B-IT",
+    cache: bool = False,
+    max_retries: int = 2
+):
+    """
+    Centralized function to call Sea Lion v4 LLM with configurable parameters and error handling.
+
+    This function provides a unified interface for all Sea Lion v4 LLM calls across the system,
+    with sensible defaults, retry logic, and comprehensive error handling for rate limits.
+
+    Args:
+        prompt: The prompt to send to the LLM (required)
+        model: The model to use (default: "aisingapore/Gemma-SEA-LION-v4-27B-IT")
+        cache: Whether to enable caching (default: False)
+        max_retries: Maximum number of retries for failed requests (default: 2)
+
+    Returns:
+        The LLM completion response object
+
+    Raises:
+        HTTPException: When Sea-Lion v4 API is not responding or rate limited
+
+    Example:
+        completion = await call_sea_lion_v4_llm(
+            prompt="Analyze this email for scam indicators",
+            cache=False
+        )
+    """
+    logger = logging.getLogger(__name__)
+    
+    for attempt in range(max_retries + 1):
+        try:
+            logger.info("🦁 Calling Sea-Lion v4 API for comprehensive analysis")
+            
+            client = get_sea_lion_v4_client()
+            
+            completion = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                extra_body={
+                    "cache": {
+                        "no-cache": not cache
+                    }
+                },
+            )
+            
+            logger.info("✅ Sea-Lion v4 API comprehensive analysis successful")
+            return completion
+            
+        except Exception as e:
+            error_message = str(e).lower()
+            
+            # Check for rate limit errors
+            if any(term in error_message for term in ['rate limit', '429', 'too many requests', 'quota']):
+                logger.warning(f"⚠️ Sea-Lion v4 API rate limit hit (attempt {attempt + 1}/{max_retries + 1})")
+                if attempt < max_retries:
+                    logger.info("🔄 Retrying Sea-Lion v4 API call...")
+                    continue
+                else:
+                    logger.error("❌ Sea-Lion v4 API rate limit exceeded. Max retries reached.")
+                    raise HTTPException(
+                        status_code=429, 
+                        detail="Sea-Lion v4 API is currently rate limited (10 requests/minute). Please wait a moment and try again. This is a temporary limitation from the AI service provider."
+                    )
+            
+            # Check for timeout errors
+            elif any(term in error_message for term in ['timeout', 'connection', 'network']):
+                logger.warning(f"⚠️ Sea-Lion v4 API connection issue (attempt {attempt + 1}/{max_retries + 1}): {error_message}")
+                if attempt < max_retries:
+                    logger.info("🔄 Retrying Sea-Lion v4 API call...")
+                    continue
+                else:
+                    logger.error("❌ Sea-Lion v4 API connection failed. Max retries reached.")
+                    raise HTTPException(
+                        status_code=503, 
+                        detail="Sea-Lion v4 AI service is currently not responding. This may be due to network issues or the service being temporarily unavailable. Please try again later."
+                    )
+            
+            # Check for authentication errors
+            elif any(term in error_message for term in ['unauthorized', 'authentication', 'api key', 'forbidden']):
+                logger.error(f"❌ Sea-Lion v4 API authentication error: {error_message}")
+                raise HTTPException(
+                    status_code=401, 
+                    detail="Sea-Lion v4 API authentication failed. The API key may be invalid or expired. Please check your Sea-Lion API configuration."
+                )
+            
+            # Generic API error
+            else:
+                logger.warning(f"⚠️ Sea-Lion v4 API error (attempt {attempt + 1}/{max_retries + 1}): {error_message}")
+                if attempt < max_retries:
+                    logger.info("🔄 Retrying Sea-Lion v4 API call...")
+                    continue
+                else:
+                    logger.error(f"❌ Sea-Lion v4 API failed after {max_retries + 1} attempts: {error_message}")
+                    raise HTTPException(
+                        status_code=502, 
+                        detail=f"Sea-Lion v4 AI service encountered an error: {str(e)}. The analysis could not be completed. Please try again or contact support if the issue persists."
+                    )
+    
+    # This should never be reached, but just in case
+    raise HTTPException(
+        status_code=500, 
+        detail="Unexpected error occurred while calling Sea-Lion v4 API. Please try again."
     )
 
 

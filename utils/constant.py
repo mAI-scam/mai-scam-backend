@@ -59,6 +59,7 @@ PUBLIC_ENDPOINTS = [
 AUTH_REQUIRED_ENDPOINTS = [
     "/email/v1/analyze",
     "/email/v1/translate",
+    "/email/v2/analyze",
     "/socialmedia/v1/analyze",
     "/socialmedia/v1/translate",
     "/website/v1/analyze",
@@ -69,6 +70,7 @@ AUTH_REQUIRED_ENDPOINTS = [
 PERMISSION_PROTECTED_ENDPOINTS = {
     "/email/v1/analyze": ["email_analysis"],
     "/email/v1/translate": ["email_analysis"],
+    "/email/v2/analyze": ["email_analysis"],
     "/socialmedia/v1/analyze": ["social_media_analysis"],
     "/socialmedia/v1/translate": ["social_media_analysis"],
     "/website/v1/analyze": ["website_analysis"],
