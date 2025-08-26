@@ -59,7 +59,8 @@ async def root():
                 "email_analysis": "/api/v1/email",
                 "social_media_analysis": "/api/v1/socialmedia",
                 "website_analysis": "/api/v1/website",
-                "v2_email_analysis": "/email/v2/analyze"
+                "v2_email_analysis": "/email/v2/analyze",
+                "v2_website_analysis": "/website/v2/analyze"
             },
             "documentation": {
                 "swagger": "/docs",

@@ -63,7 +63,8 @@ AUTH_REQUIRED_ENDPOINTS = [
     "/socialmedia/v1/analyze",
     "/socialmedia/v1/translate",
     "/website/v1/analyze",
-    "/website/v1/translate"
+    "/website/v1/translate",
+    "/website/v2/analyze"
 ]
 
 # Endpoints with specific permission requirements
@@ -74,7 +75,8 @@ PERMISSION_PROTECTED_ENDPOINTS = {
     "/socialmedia/v1/analyze": ["social_media_analysis"],
     "/socialmedia/v1/translate": ["social_media_analysis"],
     "/website/v1/analyze": ["website_analysis"],
-    "/website/v1/translate": ["website_analysis"]
+    "/website/v1/translate": ["website_analysis"],
+    "/website/v2/analyze": ["website_analysis"]
 }
 
 # Admin-only endpoints
