@@ -1,10 +1,10 @@
-APP_ENV: uat
+APP_ENV: dev
 APP_API_VERSION: 0.0.1
 SERVER_HOST: 0.0.0.0
 SERVER_PORT: 8000
 
 # JWT Configuration
-JWT_SECRET_KEY: "uat-super-secret-jwt-key-change-in-production"
+JWT_SECRET_KEY: "dev-super-secret-jwt-key-change-in-production"
 JWT_ALGORITHM: "HS256"
 JWT_EXPIRY_HOURS: 12
 
@@ -13,8 +13,8 @@ API_KEY_LENGTH: 32
 API_KEY_PREFIX: "mai_"
 
 # Debug Configuration
-DEBUG: "false"
-DEBUG_VERBOSE: 2 # 1=minimal, 2=normal, 3=verbose
+DEBUG: "true"
+DEBUG_VERBOSE: 3 # 1=minimal, 2=normal, 3=verbose
 
 # Email Configuration
 SMTP_HOST: smtp.gmail.com
