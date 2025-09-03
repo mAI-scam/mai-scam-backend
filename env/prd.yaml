@@ -15,3 +15,15 @@ API_KEY_PREFIX: "mai_"
 # Debug Configuration
 DEBUG: "false"
 DEBUG_VERBOSE: 1 # 1=minimal, 2=normal, 3=verbose
+
+# Email Configuration
+SMTP_HOST: smtp.gmail.com
+SMTP_PORT: 587
+SMTP_USERNAME: ${SMTP_USERNAME}  # Loaded from .env file
+SMTP_PASSWORD: ${SMTP_PASSWORD}  # Loaded from .env file
+SMTP_USE_TLS: true
+SMTP_SENDER_NAME: "MAI Scam Detection"
+REPORT_EMAIL: report.maiscam@gmail.com
+
+# Validation API Configuration
+VALIDATION_API_KEY: ${VALIDATION_API_KEY}  # Loaded from .env file

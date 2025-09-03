@@ -23,6 +23,7 @@ from typing import Optional, Dict, Any
 from models.customResponse import resp_200
 from utils.emailUtils import detect_language, analyze_email, translate_analysis, extract_signals, analyze_email_comprehensive, analyze_email_comprehensive_v2
 from utils.dbUtils import create_content_hash, save_analysis_to_db, retrieve_analysis_from_db, update_analysis_in_db, find_analysis_by_hash, prepare_email_document
+from utils.checkerUtils import check_url_phishing, check_email_validity, check_phone_number_validity, extract_urls_from_text, extract_emails_from_text, extract_phone_numbers_from_text, check_all_content, format_checker_results_for_llm
 
 config = Setting()
 
@@ -124,6 +125,15 @@ async def detect_v1(request: EmailAnalysisRequest):
     # [Step 1] Extract auxiliary signals to support the analysis
     signals = extract_signals(title=subject, content=content,
                               from_email=from_email, reply_to_email=reply_to_email or "")
+    
+    # [Step 1.5] Check URLs, emails, and phone numbers in the content
+    full_content = f"{subject} {content}"
+    checker_results = check_all_content(full_content, from_email, reply_to_email or "")
+    checker_analysis = format_checker_results_for_llm(checker_results)
+    
+    # Add checker results to signals for LLM analysis
+    if checker_analysis:
+        signals['checker_analysis'] = checker_analysis
 
     # [Step 2] Perform comprehensive analysis with single LLM call
     # This combines: language detection + analysis + target language output
@@ -172,6 +182,7 @@ async def detect_v1(request: EmailAnalysisRequest):
     document = prepare_email_document(
         subject, content, from_email, reply_to_email, base_language, analysis, signals)
     document['content_hash'] = content_hash  # Add hash to document
+    document['checker_results'] = checker_results  # Add checker results to document
 
     # Save to database using centralized function
     email_id = await save_analysis_to_db(document, "email")
@@ -267,7 +278,75 @@ async def translate_v1(request: EmailTranslationRequest):
 
 
 # =============================================================================
-# 4. EMAIL V2 ANALYSIS ENDPOINT (SEA-LION V4)
+# 4. CHECKER ENDPOINTS
+# =============================================================================
+
+class URLCheckRequest(BaseModel):
+    url: str = Field(..., description="URL to check for phishing")
+
+class URLCheckResponse(BaseModel):
+    success: bool = Field(..., description="Whether the request was successful")
+    message: str = Field(..., description="Response message")
+    data: Dict = Field(..., description="URL check results")
+    timestamp: str = Field(..., description="Response timestamp")
+    status_code: int = Field(..., description="HTTP status code")
+
+@router.post("/check-url",
+             summary="Check URL for Phishing",
+             description="Check if a URL is a phishing site using PhishTank database",
+             response_model=URLCheckResponse)
+async def check_url(request: URLCheckRequest):
+    try:
+        result = check_url_phishing(request.url)
+        return resp_200(data=result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class EmailCheckRequest(BaseModel):
+    email: str = Field(..., description="Email address to validate")
+
+class EmailCheckResponse(BaseModel):
+    success: bool = Field(..., description="Whether the request was successful")
+    message: str = Field(..., description="Response message")
+    data: Dict = Field(..., description="Email validation results")
+    timestamp: str = Field(..., description="Response timestamp")
+    status_code: int = Field(..., description="HTTP status code")
+
+@router.post("/check-email",
+             summary="Validate Email Address",
+             description="Validate email address using external validation service",
+             response_model=EmailCheckResponse)
+async def check_email(request: EmailCheckRequest):
+    try:
+        result = check_email_validity(request.email)
+        return resp_200(data=result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class PhoneCheckRequest(BaseModel):
+    phone: str = Field(..., description="Phone number to validate")
+
+class PhoneCheckResponse(BaseModel):
+    success: bool = Field(..., description="Whether the request was successful")
+    message: str = Field(..., description="Response message")
+    data: Dict = Field(..., description="Phone validation results")
+    timestamp: str = Field(..., description="Response timestamp")
+    status_code: int = Field(..., description="HTTP status code")
+
+@router.post("/check-phone",
+             summary="Validate Phone Number",
+             description="Validate phone number using external validation service",
+             response_model=PhoneCheckResponse)
+async def check_phone(request: PhoneCheckRequest):
+    try:
+        result = check_phone_number_validity(request.phone)
+        return resp_200(data=result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# 5. EMAIL V2 ANALYSIS ENDPOINT (SEA-LION V4)
 # =============================================================================
 
 # V2 Analyze endpoint with SEA-LION v4
@@ -319,6 +398,15 @@ async def analyze_email_v2(request: EmailAnalysisRequest):
     # [Step 1] Extract auxiliary signals to support the analysis
     signals = extract_signals(title=subject, content=content,
                               from_email=from_email, reply_to_email=reply_to_email or "")
+    
+    # [Step 1.5] Check URLs, emails, and phone numbers in the content
+    full_content = f"{subject} {content}"
+    checker_results = check_all_content(full_content, from_email, reply_to_email or "")
+    checker_analysis = format_checker_results_for_llm(checker_results)
+    
+    # Add checker results to signals for LLM analysis
+    if checker_analysis:
+        signals['checker_analysis'] = checker_analysis
 
     # [Step 2] Perform comprehensive analysis with single SEA-LION v4 LLM call
     # This combines: language detection + analysis + target language output
@@ -367,6 +455,7 @@ async def analyze_email_v2(request: EmailAnalysisRequest):
     document = prepare_email_document(
         subject, content, from_email, reply_to_email, base_language, analysis, signals)
     document['content_hash'] = content_hash  # Add hash to document
+    document['checker_results'] = checker_results  # Add checker results to document
 
     # Save to database using centralized function
     email_id = await save_analysis_to_db(document, "email")

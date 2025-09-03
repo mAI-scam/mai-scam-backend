@@ -24,3 +24,6 @@ SMTP_PASSWORD: ${SMTP_PASSWORD}  # Loaded from .env file
 SMTP_USE_TLS: true
 SMTP_SENDER_NAME: "MAI Scam Detection"
 REPORT_EMAIL: report.maiscam@gmail.com
+
+# Validation API Configuration
+VALIDATION_API_KEY: ${VALIDATION_API_KEY}  # Loaded from .env file
