@@ -55,6 +55,7 @@ from utils.llmUtils import parse_sealion_json, call_sea_lion_llm, call_sea_lion_
 from prompts.websitePrompts import prompts
 import re
 import json
+import logging
 from urllib.parse import urlparse
 
 
@@ -486,6 +487,16 @@ async def analyze_website_comprehensive(
         available_languages=", ".join(LANGUAGES)
     )
 
+    # Debug: Log the complete prompt being sent to LLM (V1)
+    logging.info("="*80)
+    logging.info("🔍 WEBSITE V1 ANALYSIS - LLM INPUT DEBUG")
+    logging.info("="*80)
+    logging.info("AUXILIARY SIGNALS (Checker Results):")
+    logging.info(aux_signals)
+    logging.info("FULL PROMPT BEING SENT TO LLM:")
+    logging.info(prompt[:2000] + "..." if len(prompt) > 2000 else prompt)
+    logging.info("="*80)
+
     # Single LLM call combining: language detection + scam analysis + target language output
     completion = await call_sea_lion_llm(prompt=prompt)
     json_response = parse_sealion_json(completion)
@@ -551,6 +562,16 @@ async def analyze_website_comprehensive_v2(
         aux_signals=aux_signals,
         available_languages=", ".join(LANGUAGES)
     )
+
+    # Debug: Log the complete prompt being sent to LLM (V2)
+    logging.info("="*80)
+    logging.info("🔍 WEBSITE V2 ANALYSIS - LLM INPUT DEBUG")
+    logging.info("="*80)
+    logging.info("AUXILIARY SIGNALS (Checker Results):")
+    logging.info(aux_signals)
+    logging.info("FULL PROMPT BEING SENT TO LLM:")
+    logging.info(prompt[:2000] + "..." if len(prompt) > 2000 else prompt)
+    logging.info("="*80)
 
     # Single SEA-LION v4 LLM call combining: language detection + scam analysis + target language output
     completion = await call_sea_lion_v4_llm(prompt=prompt)

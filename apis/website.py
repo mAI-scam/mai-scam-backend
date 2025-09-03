@@ -23,6 +23,7 @@ from typing import Optional, Dict, List, Any
 from models.customResponse import resp_200
 from utils.websiteUtils import detect_language, analyze_website_content, translate_analysis, extract_website_signals, analyze_website_comprehensive, analyze_website_comprehensive_v2
 from utils.dbUtils import create_content_hash, save_analysis_to_db, retrieve_analysis_from_db, update_analysis_in_db, find_analysis_by_hash, prepare_website_document
+from utils.checkerUtils import check_url_phishing, check_email_validity, check_phone_number_validity, extract_urls_from_text, extract_emails_from_text, extract_phone_numbers_from_text, check_all_content, format_checker_results_for_llm
 
 config = Setting()
 
@@ -141,6 +142,15 @@ async def analyze_website_v1(request: WebsiteAnalysisRequest):
         metadata=metadata
     )
 
+    # [Step 1.5] Check URLs, emails, and phone numbers in the website content
+    full_content = f"{url} {title or ''} {content or ''}"
+    checker_results = check_all_content(full_content)
+    checker_analysis = format_checker_results_for_llm(checker_results)
+    
+    # Add checker results to signals for LLM analysis
+    if checker_analysis:
+        signals['checker_analysis'] = checker_analysis
+
     # [Step 2] Perform comprehensive analysis with single LLM call
     # This combines: language detection + analysis + target language output
     comprehensive_analysis = await analyze_website_comprehensive(
@@ -187,6 +197,7 @@ async def analyze_website_v1(request: WebsiteAnalysisRequest):
         url, title, content, screenshot_data, metadata, base_language, analysis, signals
     )
     document['content_hash'] = content_hash  # Add hash to document
+    document['checker_results'] = checker_results  # Add checker results to document
 
     # Save to database using centralized function
     website_id = await save_analysis_to_db(document, "website")
@@ -343,6 +354,15 @@ async def analyze_website_v2(request: WebsiteAnalysisV2Request):
         metadata=metadata
     )
 
+    # [Step 1.5] Check URLs, emails, and phone numbers in the website content
+    full_content = f"{url} {title or ''} {content or ''}"
+    checker_results = check_all_content(full_content)
+    checker_analysis = format_checker_results_for_llm(checker_results)
+    
+    # Add checker results to signals for LLM analysis
+    if checker_analysis:
+        signals['checker_analysis'] = checker_analysis
+
     # [Step 2] Perform comprehensive analysis with single SEA-LION v4 LLM call
     # This combines: language detection + analysis + target language output
     comprehensive_analysis = await analyze_website_comprehensive_v2(
@@ -389,6 +409,7 @@ async def analyze_website_v2(request: WebsiteAnalysisV2Request):
     document = prepare_website_document(
         url, title, content, "", metadata, base_language, analysis, signals)
     document['content_hash'] = content_hash  # Add hash to document
+    document['checker_results'] = checker_results  # Add checker results to document
 
     # Save to database using centralized function
     website_id = await save_analysis_to_db(document, "website")
