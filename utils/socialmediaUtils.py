@@ -56,6 +56,7 @@ import re
 import json
 import base64
 import os
+import logging
 
 
 # =============================================================================
@@ -400,6 +401,16 @@ async def analyze_social_media_content(platform: str, content: str, base_languag
         aux_signals=aux_signals,
     )
 
+    # Debug: Log the complete prompt being sent to LLM (V1)
+    logging.info("="*80)
+    logging.info("🔍 SOCIAL MEDIA V1 ANALYSIS - LLM INPUT DEBUG")
+    logging.info("="*80)
+    logging.info("AUXILIARY SIGNALS (Checker Results):")
+    logging.info(aux_signals)
+    logging.info("FULL PROMPT BEING SENT TO LLM:")
+    logging.info(prompt[:2000] + "..." if len(prompt) > 2000 else prompt)
+    logging.info("="*80)
+
     completion = await call_sea_lion_llm(prompt=prompt)
     json_response = parse_sealion_json(completion)
 
@@ -495,6 +506,17 @@ OUTPUT: Provide your analysis in {target_language} language as a JSON object wit
 }}
 """
     
+    # Debug: Log the complete prompt being sent to LLM (V2 Multimodal)
+    logging.info("="*80)
+    logging.info("🔍 SOCIAL MEDIA V2 MULTIMODAL ANALYSIS - LLM INPUT DEBUG")
+    logging.info("="*80)
+    logging.info("AUXILIARY SIGNALS (Checker Results):")
+    logging.info(aux_signals)
+    logging.info("FULL TEXT PROMPT BEING SENT TO LLM:")
+    logging.info(text_prompt[:2000] + "..." if len(text_prompt) > 2000 else text_prompt)
+    logging.info(f"IMAGE PROVIDED: {'Yes' if base64_image else 'No'}")
+    logging.info("="*80)
+
     try:
         client = get_sea_lion_v4_client()
         
@@ -579,6 +601,16 @@ OUTPUT: Provide analysis in {target_language} language as JSON:
 }}
 """
     
+    # Debug: Log the complete prompt being sent to LLM (V2 Text-only)
+    logging.info("="*80)
+    logging.info("🔍 SOCIAL MEDIA V2 TEXT-ONLY ANALYSIS - LLM INPUT DEBUG")
+    logging.info("="*80)
+    logging.info("AUXILIARY SIGNALS (Checker Results):")
+    logging.info(aux_signals)
+    logging.info("FULL PROMPT BEING SENT TO LLM:")
+    logging.info(prompt[:2000] + "..." if len(prompt) > 2000 else prompt)
+    logging.info("="*80)
+
     completion = await call_sea_lion_v4_llm(prompt=prompt)
     json_response = parse_sealion_json(completion)
     return json_response

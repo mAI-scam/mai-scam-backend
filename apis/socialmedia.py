@@ -23,6 +23,7 @@ from typing import Optional, Dict, List, Any
 from models.customResponse import resp_200
 from utils.socialmediaUtils import detect_language, analyze_social_media_content, translate_analysis, extract_social_media_signals, analyze_social_media_multimodal_v2, encode_image_to_base64
 from utils.dbUtils import create_content_hash, save_analysis_to_db, retrieve_analysis_from_db, update_analysis_in_db, find_analysis_by_hash, prepare_social_media_document
+from utils.checkerUtils import check_url_phishing, check_email_validity, check_phone_number_validity, extract_urls_from_text, extract_emails_from_text, extract_phone_numbers_from_text, check_all_content, format_checker_results_for_llm
 
 config = Setting()
 
@@ -143,7 +144,11 @@ async def analyze_social_media_post_v1(request: SocialMediaAnalysisRequest):
     # [Step 1] Detect the base language of the social media content
     base_language = await detect_language(content)
 
-    # [Step 1.5] Extract auxiliary signals to support the analysis
+    # [Step 1.5] Check URLs, emails, and phone numbers in the content
+    full_content = f"{content} {post_url or ''}"
+    checker_results = check_all_content(full_content)
+    
+    # [Step 1.6] Extract auxiliary signals to support the analysis
     signals = extract_social_media_signals(
         platform=platform,
         content=content,
@@ -152,6 +157,44 @@ async def analyze_social_media_post_v1(request: SocialMediaAnalysisRequest):
         author_followers_count=author_followers_count,
         engagement_metrics=engagement_metrics
     )
+    
+    # [Step 1.7] Check additional phone numbers found by social media signal extraction
+    social_media_phones = signals.get('artifacts', {}).get('phone_numbers', [])
+    if social_media_phones:
+        # Validate any phone numbers found by social media extraction that weren't caught by checker utils
+        from utils.checkerUtils import check_phone_number_validity
+        additional_phone_results = []
+        for phone in social_media_phones:
+            # Clean phone number (remove formatting)
+            clean_phone = phone.strip().replace('(', '').replace(')', '').replace('-', '').replace(' ', '')
+            if clean_phone not in [p['phone'] for p in checker_results.get('validation', {}).get('phone_numbers', {}).get('results', [])]:
+                result = check_phone_number_validity(clean_phone)
+                additional_phone_results.append(result)
+        
+        # Merge additional phone results with checker results
+        if additional_phone_results:
+            if 'validation' not in checker_results:
+                checker_results['validation'] = {}
+            if 'phone_numbers' not in checker_results['validation']:
+                checker_results['validation']['phone_numbers'] = {'total_phones': 0, 'valid_phones': 0, 'invalid_phones': 0, 'results': []}
+            
+            # Update phone validation results
+            phone_validation = checker_results['validation']['phone_numbers']
+            phone_validation['results'].extend(additional_phone_results)
+            phone_validation['total_phones'] = len(phone_validation['results'])
+            
+            # Recount valid/invalid phones
+            valid_count = sum(1 for r in phone_validation['results'] if r.get('is_valid') is True)
+            invalid_count = sum(1 for r in phone_validation['results'] if r.get('is_valid') is False)
+            phone_validation['valid_phones'] = valid_count
+            phone_validation['invalid_phones'] = invalid_count
+    
+    # [Step 1.8] Format checker analysis for LLM
+    checker_analysis = format_checker_results_for_llm(checker_results)
+    
+    # Add checker results to signals for LLM analysis
+    if checker_analysis:
+        signals['checker_analysis'] = checker_analysis
 
     # [Step 2] Perform analysis in "base language"
     base_language_analysis = await analyze_social_media_content(
@@ -198,6 +241,7 @@ async def analyze_social_media_post_v1(request: SocialMediaAnalysisRequest):
         author_followers_count, engagement_metrics, base_language, analysis, signals
     )
     document['content_hash'] = content_hash  # Add hash to document
+    document['checker_results'] = checker_results  # Add checker results to document
 
     # Save to database using centralized function
     post_id = await save_analysis_to_db(document, "socialmedia")
@@ -432,7 +476,11 @@ async def analyze_social_media_post_v2(request: SocialMediaAnalysisV2Request):
     except Exception as e:
         raise HTTPException(status_code=400, detail="Invalid request body")
 
-    # [Step 1] Extract auxiliary signals to support the analysis
+    # [Step 1] Check URLs, emails, and phone numbers in the content
+    full_content = f"{content} {post_url or ''}"
+    checker_results = check_all_content(full_content)
+    
+    # [Step 1.5] Extract auxiliary signals to support the analysis
     signals = extract_social_media_signals(
         platform=platform,
         content=content,
@@ -441,6 +489,44 @@ async def analyze_social_media_post_v2(request: SocialMediaAnalysisV2Request):
         author_followers_count=author_followers_count,
         engagement_metrics=engagement_metrics
     )
+    
+    # [Step 1.6] Check additional phone numbers found by social media signal extraction
+    social_media_phones = signals.get('artifacts', {}).get('phone_numbers', [])
+    if social_media_phones:
+        # Validate any phone numbers found by social media extraction that weren't caught by checker utils
+        from utils.checkerUtils import check_phone_number_validity
+        additional_phone_results = []
+        for phone in social_media_phones:
+            # Clean phone number (remove formatting)
+            clean_phone = phone.strip().replace('(', '').replace(')', '').replace('-', '').replace(' ', '')
+            if clean_phone not in [p['phone'] for p in checker_results.get('validation', {}).get('phone_numbers', {}).get('results', [])]:
+                result = check_phone_number_validity(clean_phone)
+                additional_phone_results.append(result)
+        
+        # Merge additional phone results with checker results
+        if additional_phone_results:
+            if 'validation' not in checker_results:
+                checker_results['validation'] = {}
+            if 'phone_numbers' not in checker_results['validation']:
+                checker_results['validation']['phone_numbers'] = {'total_phones': 0, 'valid_phones': 0, 'invalid_phones': 0, 'results': []}
+            
+            # Update phone validation results
+            phone_validation = checker_results['validation']['phone_numbers']
+            phone_validation['results'].extend(additional_phone_results)
+            phone_validation['total_phones'] = len(phone_validation['results'])
+            
+            # Recount valid/invalid phones
+            valid_count = sum(1 for r in phone_validation['results'] if r.get('is_valid') is True)
+            invalid_count = sum(1 for r in phone_validation['results'] if r.get('is_valid') is False)
+            phone_validation['valid_phones'] = valid_count
+            phone_validation['invalid_phones'] = invalid_count
+    
+    # [Step 1.7] Format checker analysis for LLM
+    checker_analysis = format_checker_results_for_llm(checker_results)
+    
+    # Add checker results to signals for LLM analysis
+    if checker_analysis:
+        signals['checker_analysis'] = checker_analysis
 
     # [Step 2] Perform multimodal or text-only analysis based on image availability
     if image_base64:
@@ -515,6 +601,7 @@ async def analyze_social_media_post_v2(request: SocialMediaAnalysisV2Request):
         "analysis": analysis,
         "signals": signals,
         "content_hash": content_hash,
+        "checker_results": checker_results,  # Add checker results to document
         "version": "v2",
         "multimodal": bool(image_base64),
         "has_image": bool(image_base64)

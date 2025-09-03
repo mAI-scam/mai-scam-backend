@@ -145,6 +145,39 @@ async def analyze_website_v1(request: WebsiteAnalysisRequest):
     # [Step 1.5] Check URLs, emails, and phone numbers in the website content
     full_content = f"{url} {title or ''} {content or ''}"
     checker_results = check_all_content(full_content)
+    
+    # [Step 1.6] Check additional phone numbers found by website signal extraction
+    website_phones = signals.get('artifacts', {}).get('phone_numbers', [])
+    if website_phones:
+        # Validate any phone numbers found by website extraction that weren't caught by checker utils
+        from utils.checkerUtils import check_phone_number_validity
+        additional_phone_results = []
+        for phone in website_phones:
+            # Clean phone number (remove formatting)
+            clean_phone = phone.strip().replace('(', '').replace(')', '').replace('-', '').replace(' ', '')
+            if clean_phone not in [p['phone'] for p in checker_results.get('validation', {}).get('phone_numbers', {}).get('results', [])]:
+                result = check_phone_number_validity(clean_phone)
+                additional_phone_results.append(result)
+        
+        # Merge additional phone results with checker results
+        if additional_phone_results:
+            if 'validation' not in checker_results:
+                checker_results['validation'] = {}
+            if 'phone_numbers' not in checker_results['validation']:
+                checker_results['validation']['phone_numbers'] = {'total_phones': 0, 'valid_phones': 0, 'invalid_phones': 0, 'results': []}
+            
+            # Update phone validation results
+            phone_validation = checker_results['validation']['phone_numbers']
+            phone_validation['results'].extend(additional_phone_results)
+            phone_validation['total_phones'] = len(phone_validation['results'])
+            
+            # Recount valid/invalid phones
+            valid_count = sum(1 for r in phone_validation['results'] if r.get('is_valid') is True)
+            invalid_count = sum(1 for r in phone_validation['results'] if r.get('is_valid') is False)
+            phone_validation['valid_phones'] = valid_count
+            phone_validation['invalid_phones'] = invalid_count
+    
+    # [Step 1.7] Format checker analysis for LLM
     checker_analysis = format_checker_results_for_llm(checker_results)
     
     # Add checker results to signals for LLM analysis
@@ -357,6 +390,39 @@ async def analyze_website_v2(request: WebsiteAnalysisV2Request):
     # [Step 1.5] Check URLs, emails, and phone numbers in the website content
     full_content = f"{url} {title or ''} {content or ''}"
     checker_results = check_all_content(full_content)
+    
+    # [Step 1.6] Check additional phone numbers found by website signal extraction
+    website_phones = signals.get('artifacts', {}).get('phone_numbers', [])
+    if website_phones:
+        # Validate any phone numbers found by website extraction that weren't caught by checker utils
+        from utils.checkerUtils import check_phone_number_validity
+        additional_phone_results = []
+        for phone in website_phones:
+            # Clean phone number (remove formatting)
+            clean_phone = phone.strip().replace('(', '').replace(')', '').replace('-', '').replace(' ', '')
+            if clean_phone not in [p['phone'] for p in checker_results.get('validation', {}).get('phone_numbers', {}).get('results', [])]:
+                result = check_phone_number_validity(clean_phone)
+                additional_phone_results.append(result)
+        
+        # Merge additional phone results with checker results
+        if additional_phone_results:
+            if 'validation' not in checker_results:
+                checker_results['validation'] = {}
+            if 'phone_numbers' not in checker_results['validation']:
+                checker_results['validation']['phone_numbers'] = {'total_phones': 0, 'valid_phones': 0, 'invalid_phones': 0, 'results': []}
+            
+            # Update phone validation results
+            phone_validation = checker_results['validation']['phone_numbers']
+            phone_validation['results'].extend(additional_phone_results)
+            phone_validation['total_phones'] = len(phone_validation['results'])
+            
+            # Recount valid/invalid phones
+            valid_count = sum(1 for r in phone_validation['results'] if r.get('is_valid') is True)
+            invalid_count = sum(1 for r in phone_validation['results'] if r.get('is_valid') is False)
+            phone_validation['valid_phones'] = valid_count
+            phone_validation['invalid_phones'] = invalid_count
+    
+    # [Step 1.7] Format checker analysis for LLM
     checker_analysis = format_checker_results_for_llm(checker_results)
     
     # Add checker results to signals for LLM analysis
