@@ -60,9 +60,9 @@ def get_dynamodb_client():
     Get DynamoDB client with credentials from environment variables.
     
     The client automatically uses AWS credentials from environment:
-    - AWS_ACCESS_KEY_ID
-    - AWS_SECRET_ACCESS_KEY
-    - AWS_SESSION_TOKEN
+    - AWS_ACCESS_KEY_ID (required)
+    - AWS_SECRET_ACCESS_KEY (required)
+    - AWS_SESSION_TOKEN (optional, only for temporary credentials)
     
     Returns:
         boto3.client: Configured DynamoDB client
@@ -70,7 +70,21 @@ def get_dynamodb_client():
     Example:
         dynamodb_client = get_dynamodb_client()
     """
-    return boto3.client('dynamodb', region_name=DYNAMODB_REGION)
+    import os
+    
+    # Create client with explicit credentials to avoid SSO issues in deployment
+    aws_config = {
+        'region_name': DYNAMODB_REGION,
+        'aws_access_key_id': os.getenv('AWS_ACCESS_KEY_ID'),
+        'aws_secret_access_key': os.getenv('AWS_SECRET_ACCESS_KEY')
+    }
+    
+    # Only include session token if it exists (for temporary credentials)
+    aws_session_token = os.getenv('AWS_SESSION_TOKEN')
+    if aws_session_token:
+        aws_config['aws_session_token'] = aws_session_token
+    
+    return boto3.client('dynamodb', **aws_config)
 
 
 def get_dynamodb_resource():
@@ -84,7 +98,21 @@ def get_dynamodb_resource():
         dynamodb = get_dynamodb_resource()
         table = dynamodb.Table(DYNAMODB_TABLE_NAME)
     """
-    return boto3.resource('dynamodb', region_name=DYNAMODB_REGION)
+    import os
+    
+    # Create resource with explicit credentials to avoid SSO issues in deployment
+    aws_config = {
+        'region_name': DYNAMODB_REGION,
+        'aws_access_key_id': os.getenv('AWS_ACCESS_KEY_ID'),
+        'aws_secret_access_key': os.getenv('AWS_SECRET_ACCESS_KEY')
+    }
+    
+    # Only include session token if it exists (for temporary credentials)
+    aws_session_token = os.getenv('AWS_SESSION_TOKEN')
+    if aws_session_token:
+        aws_config['aws_session_token'] = aws_session_token
+    
+    return boto3.resource('dynamodb', **aws_config)
 
 
 # =============================================================================

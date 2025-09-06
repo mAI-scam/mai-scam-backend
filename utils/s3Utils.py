@@ -54,9 +54,9 @@ def get_s3_client():
     Get S3 client with credentials from environment variables.
     
     The client automatically uses AWS credentials from environment:
-    - AWS_ACCESS_KEY_ID
-    - AWS_SECRET_ACCESS_KEY  
-    - AWS_SESSION_TOKEN
+    - AWS_ACCESS_KEY_ID (required)
+    - AWS_SECRET_ACCESS_KEY (required)
+    - AWS_SESSION_TOKEN (optional, only for temporary credentials)
     
     Returns:
         boto3.client: Configured S3 client
@@ -64,7 +64,21 @@ def get_s3_client():
     Example:
         s3_client = get_s3_client()
     """
-    return boto3.client('s3', region_name=S3_REGION)
+    import os
+    
+    # Create client with explicit credentials to avoid SSO issues in deployment
+    aws_config = {
+        'region_name': S3_REGION,
+        'aws_access_key_id': os.getenv('AWS_ACCESS_KEY_ID'),
+        'aws_secret_access_key': os.getenv('AWS_SECRET_ACCESS_KEY')
+    }
+    
+    # Only include session token if it exists (for temporary credentials)
+    aws_session_token = os.getenv('AWS_SESSION_TOKEN')
+    if aws_session_token:
+        aws_config['aws_session_token'] = aws_session_token
+    
+    return boto3.client('s3', **aws_config)
 
 
 # =============================================================================
