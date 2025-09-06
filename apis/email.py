@@ -22,12 +22,33 @@ from typing import Optional, Dict, Any
 
 from models.customResponse import resp_200
 from utils.emailUtils import detect_language, analyze_email, translate_analysis, extract_signals, analyze_email_comprehensive, analyze_email_comprehensive_v2
-from utils.dbUtils import create_content_hash, save_analysis_to_db, retrieve_analysis_from_db, update_analysis_in_db, find_analysis_by_hash, prepare_email_document
+from utils.dynamodbUtils import save_detection_result, find_result_by_hash
+import hashlib
 from utils.checkerUtils import check_url_phishing, check_email_validity, check_phone_number_validity, extract_urls_from_text, extract_emails_from_text, extract_phone_numbers_from_text, check_all_content, format_checker_results_for_llm
 
 config = Setting()
 
 router = APIRouter(prefix="/email", tags=["Email Analysis"])
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+def create_email_content_hash(subject: str, content: str, from_email: str) -> str:
+    """Create unique hash for email content to enable deduplication."""
+    # Normalize text for consistent hashing
+    def normalize_text(text):
+        if not text:
+            return ""
+        return text.strip().lower()
+    
+    subject_norm = normalize_text(subject)
+    content_norm = normalize_text(content)
+    from_email_norm = normalize_text(from_email)
+    
+    hash_input = f"email:{subject_norm}|{content_norm}|{from_email_norm}"
+    hash_object = hashlib.sha256(hash_input.encode('utf-8'))
+    return hash_object.hexdigest()[:16]
 
 # =============================================================================
 # 1. HEALTH CHECK ENDPOINT
@@ -190,35 +211,30 @@ async def detect_v1(request: EmailAnalysisRequest):
     }
 
     # [Step 4] Create unique content hash for reusability
-    content_hash = create_content_hash(
-        "email", subject=subject, content=content, from_email=from_email)
+    content_hash = create_email_content_hash(subject, content, from_email)
 
     # [Step 4.5] Check if we already have analysis for this content
-    existing_analysis = await find_analysis_by_hash(content_hash, "email")
-    if existing_analysis:
-        # Return existing analysis if available
-        existing_id = existing_analysis.get('_id')
-        existing_analysis_data = existing_analysis.get('analysis', {})
-
-        # If target language analysis exists, return it
-        if target_language in existing_analysis_data:
-            target_analysis = existing_analysis_data[target_language]
+    existing_analysis = await find_result_by_hash(content_hash)
+    if existing_analysis and existing_analysis.get('content_type') == 'email':
+        # Return existing analysis if available and matches target language
+        existing_result = existing_analysis.get('analysis_result', {})
+        if existing_result:
             return resp_200(
                 data={
-                    "risk_level": target_analysis["risk_level"],
-                    "reasons": target_analysis["analysis"],  # Map 'analysis' to 'reasons'
-                    "recommended_action": target_analysis["recommended_action"]
+                    "risk_level": existing_result.get("risk_level"),
+                    "reasons": existing_result.get("analysis"),  # Map 'analysis' to 'reasons'
+                    "recommended_action": existing_result.get("recommended_action"),
+                    "detected_language": existing_result.get("detected_language")
                 }
             )
 
-    # [Step 5] Store title, content, emails, "base language", analysis in "base language" and analysis in "target language" in database
-    document = prepare_email_document(
-        subject, content, from_email, reply_to_email, base_language, analysis, signals)
-    document['content_hash'] = content_hash  # Add hash to document
-    document['checker_results'] = checker_results  # Add checker results to document
-
-    # Save to database using centralized function
-    email_id = await save_analysis_to_db(document, "email")
+    # [Step 5] Save detection result to DynamoDB (only LLM analysis, no email content)
+    detection_id = await save_detection_result(
+        content_type="email",
+        content_hash=content_hash,
+        analysis_result=comprehensive_analysis,
+        target_language=target_language
+    )
 
     # [Step 5] Respond analysis in "target language" to user  
     return resp_200(
@@ -271,43 +287,44 @@ Translate email analysis results to different languages.
 """
 
 
-@router.post("/v1/translate",
-             summary=translate_v1_summary,
-             description=translate_v1_description,
-             response_model=EmailTranslationResponse,
-             response_description="Translated email analysis results")
-async def translate_v1(request: EmailTranslationRequest):
-    # [Step 0] Read values from the request body
-    try:
-        email_id = request.email_id
-        target_language = request.target_language
-
-    except Exception as e:
-        raise HTTPException(status_code=400, detail="Invalid request body")
-
-    # [Step 1] Get base_language_analysis from database
-    document = await retrieve_analysis_from_db(email_id, "email")
-    if not document:
-        raise HTTPException(
-            status_code=404, detail="Email analysis not found in database")
-
-    base_language = document.get('base_language')
-    base_language_analysis = document.get('analysis').get(base_language)
-
-    # [Step 2] Perform translation
-    target_language_analysis = await translate_analysis(base_language_analysis, base_language, target_language)
-
-    # [Step 3] Store target_language_analysis into database
-    await update_analysis_in_db(email_id, target_language, target_language_analysis, "email")
-
-    # [Step 4] Respond analysis in "target language" to user
-    return resp_200(
-        data={
-            "risk_level": target_language_analysis["risk_level"],
-            "reasons": target_language_analysis["analysis"],  # Map 'analysis' to 'reasons'
-            "recommended_action": target_language_analysis["recommended_action"]
-        }
-    )
+# Translation endpoint temporarily disabled during DynamoDB migration
+# @router.post("/v1/translate",
+#              summary=translate_v1_summary, 
+#              description=translate_v1_description,
+#              response_model=EmailTranslationResponse,
+#              response_description="Translated email analysis results")
+# async def translate_v1(request: EmailTranslationRequest):
+#     # [Step 0] Read values from the request body
+#     try:
+#         email_id = request.email_id
+#         target_language = request.target_language
+# 
+#     except Exception as e:
+#         raise HTTPException(status_code=400, detail="Invalid request body")
+# 
+#     # [Step 1] Get base_language_analysis from database
+#     document = await retrieve_analysis_from_db(email_id, "email")
+#     if not document:
+#         raise HTTPException(
+#             status_code=404, detail="Email analysis not found in database")
+# 
+#     base_language = document.get('base_language')
+#     base_language_analysis = document.get('analysis').get(base_language)
+# 
+#     # [Step 2] Perform translation
+#     target_language_analysis = await translate_analysis(base_language_analysis, base_language, target_language)
+# 
+#     # [Step 3] Store target_language_analysis into database
+#     await update_analysis_in_db(email_id, target_language, target_language_analysis, "email")
+# 
+#     # [Step 4] Respond analysis in "target language" to user
+#     return resp_200(
+#         data={
+#             "risk_level": target_language_analysis["risk_level"],
+#             "reasons": target_language_analysis["analysis"],  # Map 'analysis' to 'reasons'
+#             "recommended_action": target_language_analysis["recommended_action"]
+#         }
+#     )
 
 
 # =============================================================================
@@ -496,37 +513,44 @@ async def analyze_email_v2(request: EmailAnalysisRequest):
     }
 
     # [Step 4] Create unique content hash for reusability
-    content_hash = create_content_hash(
-        "email", subject=subject, content=content, from_email=from_email)
+    content_hash = create_email_content_hash(subject, content, from_email)
 
     # [Step 4.5] Check if we already have analysis for this content
-    existing_analysis = await find_analysis_by_hash(content_hash, "email")
-    if existing_analysis:
-        # Return existing analysis if available
-        existing_id = existing_analysis.get('_id')
-        existing_analysis_data = existing_analysis.get('analysis', {})
-
-        # If target language analysis exists, return it
-        if target_language in existing_analysis_data:
-            target_analysis = existing_analysis_data[target_language]
+    existing_analysis = await find_result_by_hash(content_hash)
+    if existing_analysis and existing_analysis.get('content_type') == 'email':
+        # Return existing analysis if available and matches target language
+        existing_result = existing_analysis.get('analysis_result', {})
+        if existing_result:
+            print(f"Returning cached result for content hash: {content_hash}")
             return resp_200(
                 data={
-                    "risk_level": target_analysis["risk_level"],
-                    "reasons": target_analysis["analysis"],  # Map 'analysis' to 'reasons'
-                    "recommended_action": target_analysis["recommended_action"]
+                    "risk_level": existing_result.get("risk_level"),
+                    "reasons": existing_result.get("analysis"),  # Map 'analysis' to 'reasons'
+                    "recommended_action": existing_result.get("recommended_action"),
+                    "detected_language": existing_result.get("detected_language")
                 }
             )
 
-    # [Step 5] Store title, content, emails, "base language", analysis in "base language" and analysis in "target language" in database
-    document = prepare_email_document(
-        subject, content, from_email, reply_to_email, base_language, analysis, signals)
-    document['content_hash'] = content_hash  # Add hash to document
-    document['checker_results'] = checker_results  # Add checker results to document
+    # [Step 5] Save detection result to DynamoDB (only LLM analysis, no email content)
+    print(f"Attempting to save email analysis to DynamoDB for content hash: {content_hash}")
+    detection_id = await save_detection_result(
+        content_type="email",
+        content_hash=content_hash,
+        analysis_result=comprehensive_analysis,
+        target_language=target_language
+    )
+    
+    # [Step 5.1] Verify save was successful before returning response
+    if not detection_id or detection_id.startswith('temp_'):
+        print(f"❌ CRITICAL: Failed to save email analysis to DynamoDB! Got ID: {detection_id}")
+        print(f"Content hash: {content_hash}")
+        print(f"Analysis result: {comprehensive_analysis}")
+        # For now, continue with response (graceful degradation)
+        # In production, you might want to raise an exception here
+    else:
+        print(f"✅ SUCCESS: Saved email analysis to DynamoDB with ID: {detection_id}")
 
-    # Save to database using centralized function
-    email_id = await save_analysis_to_db(document, "email")
-
-    # [Step 5] Respond analysis in "target language" to user  
+    # [Step 6] Respond analysis in "target language" to user  
     return resp_200(
         data={
             "risk_level": comprehensive_analysis["risk_level"],

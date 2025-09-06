@@ -27,3 +27,11 @@ REPORT_EMAIL: report.maiscam@gmail.com
 
 # Validation API Configuration
 VALIDATION_API_KEY: ${VALIDATION_API_KEY}  # Loaded from .env file
+
+# AWS Configuration
+AWS_REGION: us-east-1
+DYNAMODB_TABLE_NAME: mai-scam-detection-results
+S3_BUCKET_NAME: mai-scam-detected-images
+AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}  # Loaded from .env file
+AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}  # Loaded from .env file  
+AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}  # Loaded from .env file
