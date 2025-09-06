@@ -466,44 +466,68 @@ async def analyze_social_media_multimodal_v2(
     
     # Create multimodal prompt for Sea-Lion v4
     text_prompt = f"""
-You are an expert social media scam detector analyzing both text content and visual content from a {platform} post. 
+You are an expert social media scam detector analyzing both text content and visual content from a {platform} post with focus on providing precise, actionable recommendations for public users.
 
 TEXT CONTENT: {content}
 
 AUXILIARY SIGNALS: {aux_signals}
 
-TASK: Analyze both the provided image and text content for scam indicators. Consider:
+TASK: Analyze both the provided image and text content for scam indicators with focus on key risk factors. Consider:
 
-1. IMAGE ANALYSIS:
-   - Visual elements that suggest scams (fake logos, poor design, misleading claims)
-   - Text within the image (OCR any visible text and analyze it)
-   - Brand impersonation attempts
-   - Visual quality and professionalism
-   - Screenshots of fake transactions or testimonials
+1. IMAGE ANALYSIS PRIORITIES:
+   - Brand impersonation: Fake logos, copied official designs, fraudulent verification badges
+   - Financial fraud visuals: Fake payment screenshots, fabricated earnings, investment charts
+   - Quality assessment: Professional vs amateur design (legitimate brands maintain quality)
+   - Text extraction: OCR any visible text and analyze for scam language patterns
+   - Visual manipulation: Doctored screenshots, fake testimonials, misleading before/after
 
-2. TEXT ANALYSIS:
-   - Urgency tactics and emotional manipulation
-   - Financial promises or requests
-   - Poor grammar/spelling (potential translation artifacts)
-   - Suspicious links or contact information
-   - Platform-specific scam patterns
+2. TEXT ANALYSIS PRIORITIES:
+   - Financial exploitation: Money requests, investment "opportunities", get-rich-quick promises
+   - Social engineering: Urgency tactics, emotional manipulation, fear-based appeals
+   - Platform inconsistencies: Mismatched usernames, fake verification claims
+   - Contact method red flags: Requests to move to WhatsApp/Telegram, suspicious phone numbers
 
-3. COMBINED ANALYSIS:
-   - How the image and text work together to create a scam narrative
-   - Inconsistencies between visual and textual claims
-   - Overall credibility assessment
+3. COMBINED MULTIMODAL ANALYSIS:
+   - Narrative consistency: Do image and text support the same credible story?
+   - Platform context: Does the content match expected {platform} post patterns?
+   - Scam sophistication: Professional visuals with amateur text (or vice versa)
+
+4. PLATFORM-SPECIFIC CONSIDERATIONS for {platform}:
+   - Facebook/Instagram: Giveaway scams, fake brand partnerships, romance exploitation
+   - Twitter/X: Crypto pump schemes, fake news monetization, impersonation with stolen verification
+   - TikTok: Challenge scams, product fraud, targeting younger demographics
+   - LinkedIn: Fake job offers, pyramid recruiting, executive impersonation
 
 LANGUAGE DETECTION: First detect the primary language of the text content from these options: {', '.join(LANGUAGES)}
 
-OUTPUT: Provide your analysis in {target_language} language as a JSON object with this exact structure:
+ANALYSIS FOCUS:
+- Identify the single most critical risk factor from image + text combination
+- Explain why this specific pattern is concerning on {platform}
+- Provide specific, actionable guidance for general public users
+
+ACTIONABLE RECOMMENDATIONS:
+HIGH RISK: "Block account, report to {platform}, never send money/info"
+MEDIUM RISK: "Verify account legitimacy, check official sources before engaging"
+LOW RISK: "Appears normal, but remain cautious with personal information"
+
+You must return EXACTLY one minified JSON object with these keys and nothing else.
+No prose, no markdown, no code fences.
+All text fields must be in TARGET_LANGUAGE ({target_language}).
+
+Schema:
 {{
-    "detected_language": "language_code",
-    "risk_level": "high|medium|low",
-    "analysis": "Comprehensive analysis covering both image and text elements, explaining scam indicators found",
-    "recommended_action": "Specific action recommendation for users",
-    "image_analysis": "Specific findings from the image analysis",
-    "text_analysis": "Specific findings from the text content analysis"
+    "detected_language": "<language_code>",
+    "risk_level": "<high|medium|low in TARGET_LANGUAGE>",
+    "analysis": "<precise 1-2 sentences focusing on main risk factor in TARGET_LANGUAGE>",
+    "recommended_action": "<specific actionable advice for public users in TARGET_LANGUAGE>",
+    "image_analysis": "<key visual scam indicators in TARGET_LANGUAGE>",
+    "text_analysis": "<key textual scam indicators in TARGET_LANGUAGE>"
 }}
+
+IMPORTANT:
+- Focus on single most critical combined risk factor
+- Make recommendations specific and actionable for general {platform} users
+- Use clear, non-technical language
 """
     
     # Debug: Log the complete prompt being sent to LLM (V2 Multimodal)
@@ -575,7 +599,7 @@ async def analyze_social_media_content_v2(
     aux_signals = json.dumps(signals or {}, ensure_ascii=False)
     
     prompt = f"""
-You are an expert social media scam detector. Analyze the following {platform} post for scam indicators.
+You are an expert social media scam detector analyzing {platform} post content with focus on providing precise, actionable recommendations for public users.
 
 CONTENT: {content}
 
@@ -583,22 +607,53 @@ AUXILIARY SIGNALS: {aux_signals}
 
 TASK:
 1. LANGUAGE DETECTION: First detect the primary language from these options: {', '.join(LANGUAGES)}
-2. SCAM ANALYSIS: Analyze for scam indicators including:
-   - Financial promises or requests
-   - Urgency tactics and emotional manipulation
-   - Poor grammar/spelling
-   - Suspicious links or contact information
-   - Platform-specific scam patterns
+
+2. SCAM ANALYSIS PRIORITIES:
+   PRIMARY INDICATORS (High Risk):
+   - Financial fraud: Fake giveaways, investment schemes, get-rich-quick promises
+   - Identity impersonation: Fake celebrity/brand accounts, verification fraud
+   - Credential harvesting: Account verification scams, fake login prompts
+   - Social engineering: Romance scams, urgent money requests
+
+   SECONDARY INDICATORS (Medium Risk):
+   - Engagement anomalies: Bot patterns, suspicious follower counts
+   - Misleading content: Unrealistic claims, fake testimonials
+   - Platform inconsistencies: Wrong verification status, mismatched details
+
+3. PLATFORM-SPECIFIC FOCUS for {platform}:
+   - Facebook/Instagram: Brand giveaway scams, romance fraud, fake investment groups
+   - Twitter/X: Crypto scams, impersonation with stolen verification, fake news monetization
+   - TikTok: Challenge exploitation, product fraud, targeting younger users
+   - LinkedIn: Fake recruitment, pyramid schemes, executive impersonation
+
+4. ANALYSIS FOCUS:
+   - Identify single most critical risk factor
+   - Explain why this matters specifically on {platform}
+   - Provide actionable guidance for general public
+
+ACTIONABLE RECOMMENDATIONS:
+HIGH RISK: "Block this account and report as scam to {platform}"
+MEDIUM RISK: "Verify account legitimacy through official sources before engaging"
+LOW RISK: "This appears normal, but remain cautious with personal information"
    
-OUTPUT: Provide analysis in {target_language} language as JSON:
+You must return EXACTLY one minified JSON object with these keys and nothing else.
+No prose, no markdown, no code fences.
+All text fields must be in TARGET_LANGUAGE ({target_language}).
+
+Schema:
 {{
-    "detected_language": "language_code",
-    "risk_level": "high|medium|low", 
-    "analysis": "Detailed explanation of findings",
-    "recommended_action": "Specific action recommendation",
+    "detected_language": "<language_code>",
+    "risk_level": "<high|medium|low in TARGET_LANGUAGE>", 
+    "analysis": "<precise 1-2 sentences focusing on main risk factor in TARGET_LANGUAGE>",
+    "recommended_action": "<specific actionable advice for public users in TARGET_LANGUAGE>",
     "image_analysis": "N/A - text-only analysis",
-    "text_analysis": "Specific findings from text analysis"
+    "text_analysis": "<key scam indicators in TARGET_LANGUAGE>"
 }}
+
+IMPORTANT:
+- Focus analysis on single most critical risk factor
+- Make recommendations specific and actionable for general {platform} users  
+- Use clear, non-technical language
 """
     
     # Debug: Log the complete prompt being sent to LLM (V2 Text-only)

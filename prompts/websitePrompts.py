@@ -200,10 +200,28 @@ RED FLAGS (prioritized):
 4. Contact method red flags: Only social media, no official phone/address
 5. Grammar/spelling inconsistencies for established brands
 
+[ACTIONABLE RECOMMENDATIONS FOR PUBLIC USERS]
+HIGH RISK: Immediate protective actions
+- "Close this site immediately and go to [legitimate_url] instead"
+- "Never enter personal information on this site"
+- "Report this phishing site to authorities"
+- "Clear browser data after visiting this site"
+
+MEDIUM RISK: Verification steps
+- "Verify this website's legitimacy before providing information"
+- "Check the URL carefully for spelling errors"
+- "Look for official security certificates"
+- "Contact the organization through official channels"
+
+LOW RISK: Standard precautions
+- "This appears legitimate, but always be cautious with personal info"
+- "Verify any unexpected requests independently"
+- "Keep software and browsers updated"
+
 [SCORING RULES]
-- "high": Clear impersonation of legitimate brand, phishing forms, definitive scam indicators
-- "medium": Suspicious domain or content patterns but not definitively malicious
-- "low": Legitimate website with no meaningful red flags
+- "high": Clear impersonation of legitimate brand, phishing forms, definitive scam indicators requiring immediate action
+- "medium": Suspicious domain or content patterns requiring verification before use
+- "low": Legitimate website with standard security precautions needed
 
 [OUTPUT FORMAT]
 You must return EXACTLY one minified JSON object with these keys and nothing else.
@@ -215,14 +233,16 @@ Schema:
     "detected_language": "<iso-639-1 code of website content>",
     "risk_level": "<low|medium|high in TARGET_LANGUAGE>",
     "analysis": "<precise 1-2 sentences explaining key risk factors in TARGET_LANGUAGE>",
-    "recommended_action": "<specific actionable advice in TARGET_LANGUAGE>",
+    "recommended_action": "<specific actionable advice for public users in TARGET_LANGUAGE>",
     "legitimate_url": "<official website URL if brand impersonation detected, null otherwise>"
 }}
 
 IMPORTANT: 
 - Keep analysis concise and focused on main risk factors
+- Make recommendations specific and actionable for general public
 - If impersonating a brand, ALWAYS provide legitimate_url with correct official domain
 - For legitimate_url: use null if no impersonation, or "https://official-domain.com" format
+- Use clear, non-technical language
 
 Now produce ONLY:
 {{

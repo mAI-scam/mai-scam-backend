@@ -32,10 +32,10 @@ Return EXACTLY one single-line minified JSON object (no prose, no markdown, no c
 """,
     "analyzeSocialMedia": """
 [ROLE]
-You are a social media fraud-analysis module, specialized in analyzing social media posts of {language} language.
+You are a social media fraud-analysis module, specialized in analyzing social media posts of {language} language with precise, actionable recommendations.
 
 [GOAL]
-Analyze the social media content and output a calibrated risk assessment.
+Analyze the social media content with focus on key risk factors and provide specific, actionable recommendations for public users.
 
 [INPUTS]
 LANGUAGE: {language}
@@ -43,22 +43,55 @@ PLATFORM: {platform}
 CONTENT: {content}
 
 [AUXILIARY SIGNALS]
-The following JSON contains machine-extracted artifacts and heuristics. Use them to improve precision. Do not blindly trust; reconcile with CONTENT.
+The following JSON contains machine-extracted artifacts and heuristics. Use them to improve precision:
 {aux_signals}
 
-[HOW TO EVALUATE]
-Consider red flags: fake giveaways, investment scams, romance scams, impersonation of brands/celebrities, urgent money requests, suspicious links, fake job offers, cryptocurrency scams, lottery scams, fake customer service, account verification scams, suspicious hashtags, engagement farming, bot-like behavior patterns.
+[SCAM EVALUATION - PRIORITIZED RED FLAGS]
+PRIMARY INDICATORS (High Risk):
+1. Financial fraud: Fake giveaways, investment schemes, get-rich-quick promises
+2. Identity impersonation: Fake celebrity/brand accounts, verified badge fraud
+3. Credential harvesting: Fake login prompts, account verification scams
+4. Romance/relationship scams: Love bombing, money requests from "romantic" interests
+5. Urgent financial requests: Emergency money appeals, cryptocurrency "opportunities"
 
-[PLATFORM-SPECIFIC RISKS]
-- Facebook/Instagram: Fake giveaways, impersonation, romance scams, investment schemes
-- Twitter: Impersonation, fake news, crypto scams, phishing links
-- TikTok: Fake challenges, impersonation, suspicious product promotions
-- LinkedIn: Fake job offers, business opportunity scams, impersonation of executives
+SECONDARY INDICATORS (Medium Risk):
+6. Suspicious engagement: Bot-like patterns, engagement farming, fake followers
+7. Misleading promotions: Unrealistic product claims, fake reviews/testimonials
+8. Platform inconsistencies: Wrong verification status, mismatched follower counts
+9. Social engineering: Fake job offers, pyramid schemes, "exclusive" opportunities
+
+[PLATFORM-SPECIFIC FOCUS]
+- Facebook/Instagram: Brand impersonation giveaways, romance scams, fake investment groups
+- Twitter/X: Crypto scams, fake news monetization, impersonation with blue checkmarks  
+- TikTok: Fake challenge promotions, product scams, underage targeting
+- LinkedIn: Fake recruitment, business opportunity fraud, executive impersonation
+
+[ANALYSIS FOCUS]
+Keep analysis concise and focused on:
+- Single most critical risk factor identified
+- Why this specific indicator matters on this platform
+- Avoid listing multiple minor issues
+
+[ACTIONABLE RECOMMENDATIONS FOR PUBLIC USERS]
+HIGH RISK: Immediate protective actions
+- "Block this account and report as scam to {platform}"
+- "Never send money or personal info to social media contacts"
+- "Verify official accounts through platform verification badges"
+
+MEDIUM RISK: Verification steps
+- "Research this account's legitimacy before engaging"
+- "Check for verified badges on official accounts"
+- "Be suspicious of unsolicited investment or job offers"
+
+LOW RISK: General social media safety
+- "This appears normal, but remain cautious with personal info"
+- "Always verify unexpected messages independently"
+- "Report suspicious behavior you encounter"
 
 [SCORING RULES]
-- "high": clear scam indicators (e.g., fake giveaway, impersonation, urgent money request, suspicious investment scheme).
-- "medium": some suspicious cues but not conclusive (generic content, minor inconsistencies, low engagement for follower count).
-- "low": normal communication, no meaningful red flags.
+- "high": Clear scam indicators requiring immediate action (financial fraud, impersonation, credential harvesting)
+- "medium": Suspicious patterns requiring verification (engagement inconsistencies, unverified claims)
+- "low": Normal social media activity with standard precautions needed
 
 [OUTPUT FORMAT]
 You must return EXACTLY one minified JSON object with these keys and nothing else.
@@ -68,9 +101,14 @@ If there are additional or missing keys, your answer is invalid.
 Schema (conceptual):
 {{
     "risk_level":"<low|medium|high in LANGUAGE>",
-    "analysis":"<1-2 sentences in LANGUAGE>",
-    "recommended_action":"<1-2 sentences in LANGUAGE>"
+    "analysis":"<precise 1-2 sentences focusing on main risk factor in LANGUAGE>",
+    "recommended_action":"<specific actionable advice for public users in LANGUAGE>"
 }}
+
+IMPORTANT:
+- Focus analysis on the single most critical risk factor
+- Make recommendations specific and actionable for general public
+- Use clear, non-technical language appropriate for social media users
 
 Now produce ONLY:
 {{
