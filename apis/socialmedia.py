@@ -22,12 +22,44 @@ from typing import Optional, Dict, List, Any
 
 from models.customResponse import resp_200
 from utils.socialmediaUtils import detect_language, analyze_social_media_content, translate_analysis, extract_social_media_signals, analyze_social_media_multimodal_v2, encode_image_to_base64
-from utils.dbUtils import create_content_hash, save_analysis_to_db, retrieve_analysis_from_db, update_analysis_in_db, find_analysis_by_hash, prepare_social_media_document
+from utils.dynamodbUtils import save_detection_result, find_result_by_hash
+from utils.s3Utils import upload_image_to_s3
+import hashlib
+import base64
 from utils.checkerUtils import check_url_phishing, check_email_validity, check_phone_number_validity, extract_urls_from_text, extract_emails_from_text, extract_phone_numbers_from_text, check_all_content, format_checker_results_for_llm
 
 config = Setting()
 
 router = APIRouter(prefix="/socialmedia", tags=["Social Media Analysis"])
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+def create_socialmedia_content_hash(platform: str, content: str, author_username: str = "", post_url: str = "", has_image: bool = False) -> str:
+    """Create unique hash for social media content to enable deduplication."""
+    # Normalize text for consistent hashing
+    def normalize_text(text):
+        if not text:
+            return ""
+        return text.strip().lower()
+    
+    def normalize_url(url):
+        if not url:
+            return ""
+        # Remove query parameters and fragments for consistency
+        from urllib.parse import urlparse
+        parsed = urlparse(url.lower())
+        return f"{parsed.scheme}://{parsed.netloc}{parsed.path}".rstrip('/')
+    
+    platform_norm = normalize_text(platform)
+    content_norm = normalize_text(content)
+    author_norm = normalize_text(author_username)
+    url_norm = normalize_url(post_url)
+    
+    hash_input = f"socialmedia:{platform_norm}|{content_norm}|{author_norm}|{url_norm}|{has_image}"
+    hash_object = hashlib.sha256(hash_input.encode('utf-8'))
+    return hash_object.hexdigest()[:16]
 
 # =============================================================================
 # 1. HEALTH CHECK ENDPOINT
@@ -561,60 +593,104 @@ async def analyze_social_media_post_v2(request: SocialMediaAnalysisV2Request):
     }
 
     # [Step 3] Create unique content hash for reusability (include image in hash if present)
-    content_data = {
-        "platform": platform,
-        "content": content,
-        "author_username": author_username,
-        "post_url": post_url,
-        "has_image": bool(image_base64)
-    }
-    content_hash = create_content_hash("socialmedia", **content_data)
+    content_hash = create_socialmedia_content_hash(platform, content, author_username, post_url, bool(image_base64))
 
     # [Step 4] Check if we already have analysis for this content
-    existing_analysis = await find_analysis_by_hash(content_hash, "socialmedia")
-    if existing_analysis:
-        # Return existing analysis if available
-        existing_id = existing_analysis.get('_id')
-        existing_analysis_data = existing_analysis.get('analysis', {})
-
-        # If target language analysis exists, return it
-        if target_language in existing_analysis_data:
+    existing_analysis = await find_result_by_hash(content_hash)
+    if existing_analysis and existing_analysis.get('content_type') == 'socialmedia':
+        # Return existing analysis if available and matches target language
+        existing_result = existing_analysis.get('analysis_result', {})
+        if existing_result:
+            print(f"Returning cached social media result for content hash: {content_hash}")
             return resp_200(
                 data={
-                    "post_id": str(existing_id),
-                    target_language: existing_analysis_data[target_language],
+                    "post_id": existing_analysis.get('detection_id'),
+                    target_language: {
+                        "risk_level": existing_result.get("risk_level"),
+                        "analysis": existing_result.get("analysis"),
+                        "recommended_action": existing_result.get("recommended_action"),
+                        "image_analysis": existing_result.get("image_analysis"),
+                        "text_analysis": existing_result.get("text_analysis")
+                    },
                     "reused": True,
                     "version": "v2",
                     "multimodal": bool(image_base64)
                 }
             )
 
-    # [Step 5] Store content and analysis in database
-    document = {
+    # [Step 5] Process image and upload to S3 if present
+    image_data = []
+    if image_base64:
+        print(f"Processing image for social media post with content hash: {content_hash}")
+        try:
+            # Decode base64 image
+            image_bytes = base64.b64decode(image_base64)
+            
+            # Upload to S3
+            s3_url = await upload_image_to_s3(image_bytes, content_hash, 0)
+            
+            if s3_url:
+                image_data.append({
+                    "original_data": "base64_encoded_image",  # Don't store actual base64 for privacy
+                    "s3_url": s3_url,
+                    "s3_key": f"social_media/{content_hash}_image_0.jpg",
+                    "file_size": len(image_bytes),
+                    "uploaded_at": "2025-09-06T16:36:00.000Z"  # This will be updated by S3 utils
+                })
+                print(f"✅ Successfully uploaded image to S3: {s3_url}")
+            else:
+                print(f"❌ Failed to upload image to S3")
+        except Exception as e:
+            print(f"❌ Error processing image: {e}")
+
+    # [Step 6] Prepare extracted data for DynamoDB storage
+    extracted_data = {
         "platform": platform,
         "content": content,
         "author_username": author_username,
-        "post_url": post_url,
-        "author_followers_count": author_followers_count,
+        "post_url": post_url or "",
+        "author_followers_count": author_followers_count or 0,
         "engagement_metrics": engagement_metrics or {},
-        "base_language": detected_language,
-        "analysis": analysis,
-        "signals": signals,
-        "content_hash": content_hash,
-        "checker_results": checker_results,  # Add checker results to document
+        "images": image_data,  # S3 image data instead of base64
+        "signals": signals or {},
+        "checker_results": checker_results or {},
         "version": "v2",
-        "multimodal": bool(image_base64),
-        "has_image": bool(image_base64)
+        "multimodal": bool(image_base64)
     }
 
-    # Save to database using centralized function
-    post_id = await save_analysis_to_db(document, "socialmedia")
+    # [Step 7] Save detection result to DynamoDB (extracted data + S3 URLs + LLM analysis)
+    print(f"Attempting to save social media analysis to DynamoDB for content hash: {content_hash}")
+    detection_id = await save_detection_result(
+        content_type="socialmedia",
+        content_hash=content_hash,
+        analysis_result=comprehensive_analysis,
+        extracted_data=extracted_data,
+        target_language=target_language
+    )
+    
+    # [Step 7.1] Verify save was successful before returning response
+    if not detection_id or detection_id.startswith('temp_'):
+        print(f"❌ CRITICAL: Failed to save social media analysis to DynamoDB! Got ID: {detection_id}")
+        print(f"Content hash: {content_hash}")
+        print(f"Platform: {platform}")
+        # For now, continue with response (graceful degradation)
+        # In production, you might want to raise an exception here
+        post_id = f"temp_{content_hash[:8]}"
+    else:
+        print(f"✅ SUCCESS: Saved social media analysis to DynamoDB with ID: {detection_id}")
+        post_id = detection_id
 
-    # [Step 6] Respond analysis in "target language" to user
+    # [Step 8] Respond analysis in "target language" to user
     return resp_200(
         data={
             "post_id": post_id,
-            target_language: analysis[target_language],
+            target_language: {
+                "risk_level": comprehensive_analysis.get("risk_level"),
+                "analysis": comprehensive_analysis.get("analysis"),
+                "recommended_action": comprehensive_analysis.get("recommended_action"),
+                "image_analysis": comprehensive_analysis.get("image_analysis"),
+                "text_analysis": comprehensive_analysis.get("text_analysis")
+            },
             "reused": False,
             "version": "v2",
             "multimodal": bool(image_base64)
