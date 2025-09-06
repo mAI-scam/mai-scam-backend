@@ -383,14 +383,15 @@ class SocialMediaAnalysisV2Response(BaseModel):
 
 
 # V2 Analyze endpoint
-analyze_v2_summary = "Analyze Social Media Post for Scam Detection with Multimodal Support (v2)"
+analyze_v2_summary = "Analyze Social Media Post for Scam Detection with Multimodal Support (v2 - SageMaker)"
 
 analyze_v2_description = """
-Analyze social media content for potential scam indicators using AI with multimodal support (Sea-Lion v4).
+Analyze social media content for potential scam indicators using AI with multimodal support (SageMaker-hosted SeaLion v4).
 
 **V2 Features:**
 - **Multimodal Analysis**: Support for both text and image analysis
-- **Sea-Lion v4 Model**: Upgraded to aisingapore/Gemma-SEA-LION-v4-27B-IT
+- **SageMaker-hosted SeaLion v4 Model**: Upgraded to aisingapore/Gemma-SEA-LION-v4-27B-IT
+- **AWS SageMaker Infrastructure**: Improved performance and reliability
 - **Base64 Image Input**: Accept images as base64 encoded strings
 - **Enhanced Analysis**: Combined text and visual scam detection
 - **Image OCR**: Extract and analyze text within images
@@ -485,14 +486,14 @@ Analyze social media content for potential scam indicators using AI with multimo
              summary=analyze_v2_summary,
              description=analyze_v2_description,
              response_model=SocialMediaAnalysisV2Response,
-             response_description="Social media multimodal analysis results with risk assessment using Sea-Lion v4")
+             response_description="Social media multimodal analysis results with risk assessment using SageMaker SeaLion v4")
 async def analyze_social_media_post_v2(request: SocialMediaAnalysisV2Request):
     """
-    V2 Social media analysis endpoint with multimodal support using Sea-Lion v4 model.
+    V2 Social media analysis endpoint with multimodal support using SageMaker-hosted SeaLion v4 model.
     
     This endpoint can analyze both text content and images for comprehensive scam detection.
-    If an image is provided, it performs multimodal analysis. Otherwise, it falls back to 
-    enhanced text-only analysis using Sea-Lion v4.
+    If an image is provided, it performs multimodal analysis via SageMaker. Otherwise, it falls back to 
+    enhanced text-only analysis using SageMaker-hosted SeaLion v4.
     """
     # [Step 0] Read values from the request body
     try:

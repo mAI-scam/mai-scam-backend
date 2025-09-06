@@ -50,7 +50,7 @@ from utils.constant import (
     SUSPICIOUS_TLDS, URL_SHORTENERS, SOCIAL_MEDIA_KEYWORDS,
     LOW_ENGAGEMENT_RATE_THRESHOLD, HIGH_ENGAGEMENT_RATE_THRESHOLD, MIN_PHONE_LENGTH
 )
-from utils.llmUtils import parse_sealion_json, call_sea_lion_llm, call_sea_lion_v4_llm
+from utils.llmUtils import parse_sealion_json, call_sea_lion_llm, call_sea_lion_v4_llm, call_sagemaker_sealion_llm, call_sagemaker_sealion_multimodal_llm, parse_sagemaker_json
 from prompts.socialmediaPrompts import prompts
 import re
 import json
@@ -429,9 +429,9 @@ async def analyze_social_media_multimodal_v2(
     signals: dict | None = None
 ) -> dict:
     """
-    Perform comprehensive multimodal social media analysis using Sea-Lion v4 LLM.
+    Perform comprehensive multimodal social media analysis using SageMaker-hosted SeaLion v4 LLM.
     
-    This function uses the Sea-Lion v4 LLM to analyze both text content and images
+    This function uses the SageMaker-hosted SeaLion v4 LLM to analyze both text content and images
     for scam indicators, providing a more comprehensive analysis that combines
     textual and visual cues.
     
@@ -460,11 +460,9 @@ async def analyze_social_media_multimodal_v2(
             signals=extracted_signals
         )
     """
-    from models.clients import get_sea_lion_v4_client
-    
     aux_signals = json.dumps(signals or {}, ensure_ascii=False)
     
-    # Create multimodal prompt for Sea-Lion v4
+    # Create multimodal prompt for SageMaker SeaLion v4
     text_prompt = f"""
 You are an expert social media scam detector analyzing both text content and visual content from a {platform} post with focus on providing precise, actionable recommendations for public users.
 
@@ -530,49 +528,34 @@ IMPORTANT:
 - Use clear, non-technical language
 """
     
-    # Debug: Log the complete prompt being sent to LLM (V2 Multimodal)
+    # Debug: Log the complete prompt being sent to SageMaker LLM (V2 Multimodal)
     logging.info("="*80)
-    logging.info("🔍 SOCIAL MEDIA V2 MULTIMODAL ANALYSIS - LLM INPUT DEBUG")
+    logging.info("🔍 SOCIAL MEDIA V2 SAGEMAKER MULTIMODAL ANALYSIS - LLM INPUT DEBUG")
     logging.info("="*80)
     logging.info("AUXILIARY SIGNALS (Checker Results):")
     logging.info(aux_signals)
-    logging.info("FULL TEXT PROMPT BEING SENT TO LLM:")
+    logging.info("FULL TEXT PROMPT BEING SENT TO SAGEMAKER LLM:")
     logging.info(text_prompt[:2000] + "..." if len(text_prompt) > 2000 else text_prompt)
     logging.info(f"IMAGE PROVIDED: {'Yes' if base64_image else 'No'}")
     logging.info("="*80)
 
     try:
-        client = get_sea_lion_v4_client()
-        
-        # Create multimodal message with both image and text
-        completion = client.chat.completions.create(
-            model="aisingapore/Gemma-SEA-LION-v4-27B-IT",
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_image}"
-                            }
-                        },
-                        {
-                            "type": "text",
-                            "text": text_prompt
-                        }
-                    ]
-                }
-            ]
+        # Use SageMaker multimodal endpoint
+        completion = await call_sagemaker_sealion_multimodal_llm(
+            prompt=text_prompt,
+            base64_image=base64_image,
+            max_tokens=1500,
+            temperature=0.6,
+            top_p=0.9
         )
         
-        json_response = parse_sealion_json(completion)
+        json_response = parse_sagemaker_json(completion)
         return json_response
         
     except Exception as e:
         # Fallback to text-only analysis if multimodal fails
-        print(f"Multimodal analysis failed, falling back to text-only: {str(e)}")
-        return await analyze_social_media_content_v2(platform, content, target_language, signals)
+        print(f"SageMaker multimodal analysis failed, falling back to text-only: {str(e)}")
+        return await analyze_social_media_content_sagemaker_v2(platform, content, target_language, signals)
 
 
 async def analyze_social_media_content_v2(
@@ -582,9 +565,9 @@ async def analyze_social_media_content_v2(
     signals: dict | None = None
 ) -> dict:
     """
-    Perform comprehensive social media analysis using Sea-Lion v4 LLM (text-only fallback).
+    Perform comprehensive social media analysis using SageMaker-hosted SeaLion v4 LLM (text-only fallback).
     
-    This is a v2 version that uses Sea-Lion v4 and provides comprehensive analysis
+    This is a v2 version that uses SageMaker-hosted SeaLion v4 and provides comprehensive analysis
     including language detection in a single call.
     
     Args:
@@ -656,19 +639,31 @@ IMPORTANT:
 - Use clear, non-technical language
 """
     
-    # Debug: Log the complete prompt being sent to LLM (V2 Text-only)
+    # Debug: Log the complete prompt being sent to SageMaker LLM (V2 Text-only)
     logging.info("="*80)
-    logging.info("🔍 SOCIAL MEDIA V2 TEXT-ONLY ANALYSIS - LLM INPUT DEBUG")
+    logging.info("🔍 SOCIAL MEDIA V2 SAGEMAKER TEXT-ONLY ANALYSIS - LLM INPUT DEBUG")
     logging.info("="*80)
     logging.info("AUXILIARY SIGNALS (Checker Results):")
     logging.info(aux_signals)
-    logging.info("FULL PROMPT BEING SENT TO LLM:")
+    logging.info("FULL PROMPT BEING SENT TO SAGEMAKER LLM:")
     logging.info(prompt[:2000] + "..." if len(prompt) > 2000 else prompt)
     logging.info("="*80)
 
-    completion = await call_sea_lion_v4_llm(prompt=prompt)
-    json_response = parse_sealion_json(completion)
+    completion = await call_sagemaker_sealion_llm(prompt=prompt)
+    json_response = parse_sagemaker_json(completion)
     return json_response
+
+
+async def analyze_social_media_content_sagemaker_v2(
+    platform: str, 
+    content: str, 
+    target_language: str, 
+    signals: dict | None = None
+) -> dict:
+    """
+    Alias function for SageMaker text-only social media analysis (used as fallback).
+    """
+    return await analyze_social_media_content_v2(platform, content, target_language, signals)
 
 
 # =============================================================================

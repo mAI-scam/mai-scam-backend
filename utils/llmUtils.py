@@ -12,7 +12,9 @@ EXPORTED FUNCTIONS:
 1. call_sea_lion_llm (v3.5)
 2. call_sea_lion_v4_llm (v4)
 3. call_sagemaker_sealion_llm (SageMaker)
-4. parse_sealion_json
+4. call_sagemaker_sealion_multimodal_llm (SageMaker Multimodal)
+5. parse_sealion_json
+6. parse_sagemaker_json
 
 USAGE EXAMPLES:
 --------------
@@ -400,6 +402,140 @@ async def call_sagemaker_sealion_llm(
     raise HTTPException(
         status_code=500, 
         detail="Unexpected error occurred while calling SageMaker SeaLion v4 endpoint. Please try again."
+    )
+
+
+# =============================================================================
+# 1.4. SAGEMAKER MULTIMODAL SEA-LION LLM INTERACTION FUNCTION
+# =============================================================================
+
+async def call_sagemaker_sealion_multimodal_llm(
+    prompt: str,
+    base64_image: str,
+    max_tokens: int = 1500,
+    temperature: float = 0.6,
+    top_p: float = 0.9,
+    max_retries: int = 2
+):
+    """
+    Centralized function to call SageMaker-hosted SeaLion v4 LLM with multimodal support (text + image).
+
+    This function provides a unified interface for multimodal SageMaker SeaLion v4 LLM calls,
+    with sensible defaults, retry logic, and comprehensive error handling.
+
+    Args:
+        prompt: The text prompt to send to the LLM (required)
+        base64_image: Base64 encoded image string (required)
+        max_tokens: Maximum tokens to generate (default: 1500)
+        temperature: Temperature for response generation (default: 0.6)  
+        top_p: Top-p sampling parameter (default: 0.9)
+        max_retries: Maximum number of retries for failed requests (default: 2)
+
+    Returns:
+        The SageMaker response object
+
+    Raises:
+        HTTPException: When SageMaker API is not responding or encounters errors
+
+    Example:
+        response = await call_sagemaker_sealion_multimodal_llm(
+            prompt="Analyze this social media post for scam indicators",
+            base64_image="iVBORw0KGgoAAAANSUhEUgAA...",
+            max_tokens=1500,
+            temperature=0.6
+        )
+    """
+    logger = logging.getLogger(__name__)
+    
+    for attempt in range(max_retries + 1):
+        try:
+            logger.info("🦁 Calling SageMaker SeaLion v4 endpoint for multimodal analysis")
+            
+            predictor = get_sagemaker_predictor()
+            
+            # Prepare multimodal payload according to the test-multimodal.py format
+            payload = {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{base64_image}"
+                                }
+                            },
+                            {
+                                "type": "text",
+                                "text": prompt
+                            }
+                        ]
+                    }
+                ],
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "top_p": top_p,
+            }
+            
+            response = predictor.predict(payload)
+            
+            logger.info("✅ SageMaker SeaLion v4 multimodal endpoint analysis successful")
+            return response
+            
+        except Exception as e:
+            error_message = str(e).lower()
+            
+            # Check for AWS/SageMaker specific errors
+            if any(term in error_message for term in ['throttling', 'rate limit', 'throttled']):
+                logger.warning(f"⚠️ SageMaker multimodal endpoint throttling (attempt {attempt + 1}/{max_retries + 1})")
+                if attempt < max_retries:
+                    logger.info("🔄 Retrying SageMaker multimodal endpoint call...")
+                    continue
+                else:
+                    logger.error("❌ SageMaker multimodal endpoint throttling exceeded. Max retries reached.")
+                    raise HTTPException(
+                        status_code=429, 
+                        detail="SageMaker SeaLion v4 multimodal endpoint is currently throttled. Please wait a moment and try again."
+                    )
+            
+            # Check for timeout errors
+            elif any(term in error_message for term in ['timeout', 'connection', 'network', 'endpoint']):
+                logger.warning(f"⚠️ SageMaker multimodal endpoint connection issue (attempt {attempt + 1}/{max_retries + 1}): {error_message}")
+                if attempt < max_retries:
+                    logger.info("🔄 Retrying SageMaker multimodal endpoint call...")
+                    continue
+                else:
+                    logger.error("❌ SageMaker multimodal endpoint connection failed. Max retries reached.")
+                    raise HTTPException(
+                        status_code=503, 
+                        detail="SageMaker SeaLion v4 multimodal endpoint is currently not responding. This may be due to network issues or the endpoint being temporarily unavailable. Please try again later."
+                    )
+            
+            # Check for authentication/permission errors
+            elif any(term in error_message for term in ['access denied', 'unauthorized', 'credentials', 'forbidden']):
+                logger.error(f"❌ SageMaker multimodal endpoint authentication error: {error_message}")
+                raise HTTPException(
+                    status_code=401, 
+                    detail="SageMaker multimodal endpoint authentication failed. Please check your AWS credentials and SageMaker endpoint permissions."
+                )
+            
+            # Generic SageMaker error
+            else:
+                logger.warning(f"⚠️ SageMaker multimodal endpoint error (attempt {attempt + 1}/{max_retries + 1}): {error_message}")
+                if attempt < max_retries:
+                    logger.info("🔄 Retrying SageMaker multimodal endpoint call...")
+                    continue
+                else:
+                    logger.error(f"❌ SageMaker multimodal endpoint failed after {max_retries + 1} attempts: {error_message}")
+                    raise HTTPException(
+                        status_code=502, 
+                        detail=f"SageMaker SeaLion v4 multimodal endpoint encountered an error: {str(e)}. The analysis could not be completed. Please try again or contact support if the issue persists."
+                    )
+    
+    # This should never be reached, but just in case
+    raise HTTPException(
+        status_code=500, 
+        detail="Unexpected error occurred while calling SageMaker SeaLion v4 multimodal endpoint. Please try again."
     )
 
 
