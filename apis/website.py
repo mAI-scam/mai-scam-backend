@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, Dict, List, Any
 
 from models.customResponse import resp_200
-from utils.websiteUtils import detect_language, analyze_website_content, translate_analysis, extract_website_signals, analyze_website_comprehensive, analyze_website_comprehensive_v2
+from utils.websiteUtils import detect_language, analyze_website_content, translate_analysis, extract_website_signals, analyze_website_comprehensive, analyze_website_comprehensive_v2, analyze_website_comprehensive_sagemaker
 from utils.dynamodbUtils import save_detection_result, find_result_by_hash, get_detection_result
 import hashlib
 from utils.checkerUtils import check_url_phishing, check_email_validity, check_phone_number_validity, extract_urls_from_text, extract_emails_from_text, extract_phone_numbers_from_text, check_all_content, format_checker_results_for_llm
@@ -364,15 +364,15 @@ async def translate_website_analysis_v1(request: WebsiteTranslationRequest):
 # 4. WEBSITE V2 ANALYSIS ENDPOINT (SEA-LION V4)
 # =============================================================================
 
-# V2 Analyze endpoint with SEA-LION v4
-analyze_v2_summary = "Analyze Website for Scam Detection (v2 - SEA-LION v4)"
+# V2 Analyze endpoint with SageMaker SEA-LION v4
+analyze_v2_summary = "Analyze Website for Scam Detection (v2 - SageMaker SEA-LION v4)"
 
 analyze_v2_description = """
-Analyze website content for potential scam indicators using AI with upgraded SEA-LION v4 model.
+Analyze website content for potential scam indicators using AI with SageMaker-hosted SEA-LION v4 model.
 
 **V2 Features:**
-- Upgraded SEA-LION v4 model (aisingapore/Gemma-SEA-LION-v4-27B-IT)
-- **No reasoning toggle** (removed in v4)
+- SageMaker-hosted SEA-LION v4 model (aisingapore/Gemma-SEA-LION-v4-27B-IT)
+- AWS SageMaker infrastructure for improved performance and reliability
 - Enhanced multilingual support
 - Language detection (English, Chinese, Malay, Thai, Vietnamese)
 - URL and domain analysis
@@ -392,13 +392,13 @@ Analyze website content for potential scam indicators using AI with upgraded SEA
              summary=analyze_v2_summary,
              description=analyze_v2_description,
              response_model=WebsiteAnalysisResponse,
-             response_description="Website analysis results with risk assessment using SEA-LION v4")
+             response_description="Website analysis results with risk assessment using SageMaker SEA-LION v4")
 async def analyze_website_v2(request: WebsiteAnalysisV2Request):
     """
-    V2 Website analysis endpoint using SEA-LION v4 model.
+    V2 Website analysis endpoint using SageMaker-hosted SEA-LION v4 model.
     
-    This endpoint uses the upgraded SEA-LION v4 model without reasoning toggle
-    functionality for improved website scam detection.
+    This endpoint uses the SageMaker-hosted SEA-LION v4 model for improved 
+    performance, reliability, and cost-effectiveness compared to the Sea Lion API.
     """
     # [Step 0] Read values from the request body
     try:
@@ -463,9 +463,9 @@ async def analyze_website_v2(request: WebsiteAnalysisV2Request):
     if checker_analysis:
         signals['checker_analysis'] = checker_analysis
 
-    # [Step 2] Perform comprehensive analysis with single SEA-LION v4 LLM call
+    # [Step 2] Perform comprehensive analysis with single SageMaker SeaLion v4 LLM call
     # This combines: language detection + analysis + target language output
-    comprehensive_analysis = await analyze_website_comprehensive_v2(
+    comprehensive_analysis = await analyze_website_comprehensive_sagemaker(
         url=url,
         title=title or "",
         content=content or "",

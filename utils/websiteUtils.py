@@ -51,7 +51,7 @@ from utils.constant import (
     NEW_DOMAIN_THRESHOLD_DAYS, MIN_PHONE_LENGTH, MAX_HYPHENS_IN_DOMAIN,
     RANDOM_SUBDOMAIN_PATTERN, SUSPICIOUS_PATH_KEYWORDS
 )
-from utils.llmUtils import parse_sealion_json, call_sea_lion_llm, call_sea_lion_v4_llm
+from utils.llmUtils import parse_sealion_json, call_sea_lion_llm, call_sea_lion_v4_llm, call_sagemaker_sealion_llm, parse_sagemaker_json
 from prompts.websitePrompts import prompts
 import re
 import json
@@ -576,5 +576,78 @@ async def analyze_website_comprehensive_v2(
     # Single SEA-LION v4 LLM call combining: language detection + scam analysis + target language output
     completion = await call_sea_lion_v4_llm(prompt=prompt)
     json_response = parse_sealion_json(completion)
+
+    return json_response
+
+
+# =============================================================================
+# WEBSITE V2 COMPREHENSIVE ANALYSIS (SAGEMAKER)
+# =============================================================================
+
+async def analyze_website_comprehensive_sagemaker(
+    url: str,
+    title: str, 
+    content: str,
+    target_language: str,
+    signals: dict
+) -> dict:
+    """
+    Perform comprehensive website analysis with single SageMaker-hosted SeaLion v4 LLM call.
+    
+    This function analyzes website content for scam indicators using the SageMaker-hosted
+    SeaLion v4 model instead of the Sea Lion API.
+    
+    Args:
+        url: Website URL to analyze
+        title: Website title/page title
+        content: Website content/body text
+        target_language: Target language for analysis output
+        signals: Extracted auxiliary signals
+
+    Returns:
+        dict: Complete analysis results containing:
+            - detected_language: ISO-639-1 code of website content
+            - risk_level: "high", "medium", or "low" in target language
+            - analysis: Detailed analysis explanation in target language
+            - recommended_action: Suggested action in target language
+
+    Example:
+        result = await analyze_website_comprehensive_sagemaker(
+            url="https://fake-bank-login.com",
+            title="Secure Bank Login",
+            content="Enter your credentials to access...",
+            target_language="en",
+            signals=extracted_signals
+        )
+        # Returns: {
+        #   "detected_language": "en",
+        #   "risk_level": "high", 
+        #   "analysis": "This website shows multiple red flags...",
+        #   "recommended_action": "Do not enter credentials on this site..."
+        # }
+    """
+    aux_signals = json.dumps(signals or {}, ensure_ascii=False)
+    prompt = prompts["analyzeWebsiteComprehensive"].format(
+        target_language=target_language,
+        url=url,
+        title=title or "",
+        content=content or "",
+        aux_signals=aux_signals,
+        available_languages=", ".join(LANGUAGES)
+    )
+
+    # Debug: Log the complete prompt being sent to SageMaker LLM
+    logging.info("="*80)
+    logging.info("🔍 WEBSITE SAGEMAKER ANALYSIS - LLM INPUT DEBUG")
+    logging.info("="*80)
+    logging.info("AUXILIARY SIGNALS (Checker Results):")
+    logging.info(aux_signals)
+    logging.info("FULL PROMPT BEING SENT TO SAGEMAKER LLM:")
+    logging.info(prompt[:2000] + "..." if len(prompt) > 2000 else prompt)
+    logging.info("="*80)
+
+    # Single SageMaker-hosted SeaLion v4 LLM call combining: language detection + scam analysis + target language output
+    completion = await call_sagemaker_sealion_llm(prompt=prompt)
+    json_response = parse_sagemaker_json(completion)
 
     return json_response
