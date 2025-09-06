@@ -54,6 +54,7 @@ class WebsiteAnalysis(BaseModel):
     recommended_action: str = Field(...,
                                     description="Recommended action to take")
     detected_language: str = Field(..., description="ISO-639-1 code of detected website language")
+    legitimate_url: Optional[str] = Field(None, description="Official website URL if brand impersonation detected")
 
 
 class WebsiteAnalysisRequest(BaseModel):
@@ -241,7 +242,8 @@ async def analyze_website_v1(request: WebsiteAnalysisRequest):
             "risk_level": comprehensive_analysis["risk_level"],
             "reasons": comprehensive_analysis["analysis"],  # Map 'analysis' to 'reasons'
             "recommended_action": comprehensive_analysis["recommended_action"],
-            "detected_language": comprehensive_analysis["detected_language"]
+            "detected_language": comprehensive_analysis["detected_language"],
+            "legitimate_url": comprehensive_analysis.get("legitimate_url")
         }
     )
 
@@ -467,7 +469,8 @@ async def analyze_website_v2(request: WebsiteAnalysisV2Request):
                 data={
                     "risk_level": target_analysis["risk_level"],
                     "reasons": target_analysis["analysis"],  # Map 'analysis' to 'reasons'
-                    "recommended_action": target_analysis["recommended_action"]
+                    "recommended_action": target_analysis["recommended_action"],
+                    "legitimate_url": target_analysis.get("legitimate_url")
                 }
             )
 
@@ -486,6 +489,7 @@ async def analyze_website_v2(request: WebsiteAnalysisV2Request):
             "risk_level": comprehensive_analysis["risk_level"],
             "reasons": comprehensive_analysis["analysis"],  # Map 'analysis' to 'reasons'
             "recommended_action": comprehensive_analysis["recommended_action"],
-            "detected_language": comprehensive_analysis["detected_language"]
+            "detected_language": comprehensive_analysis["detected_language"],
+            "legitimate_url": comprehensive_analysis.get("legitimate_url")
         }
     )
