@@ -22,12 +22,41 @@ from typing import Optional, Dict, List, Any
 
 from models.customResponse import resp_200
 from utils.websiteUtils import detect_language, analyze_website_content, translate_analysis, extract_website_signals, analyze_website_comprehensive, analyze_website_comprehensive_v2
-from utils.dbUtils import create_content_hash, save_analysis_to_db, retrieve_analysis_from_db, update_analysis_in_db, find_analysis_by_hash, prepare_website_document
+from utils.dynamodbUtils import save_detection_result, find_result_by_hash
+import hashlib
 from utils.checkerUtils import check_url_phishing, check_email_validity, check_phone_number_validity, extract_urls_from_text, extract_emails_from_text, extract_phone_numbers_from_text, check_all_content, format_checker_results_for_llm
 
 config = Setting()
 
 router = APIRouter(prefix="/website", tags=["Website Analysis"])
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+def create_website_content_hash(url: str, title: str = "", content: str = "") -> str:
+    """Create unique hash for website content to enable deduplication."""
+    # Normalize text for consistent hashing
+    def normalize_text(text):
+        if not text:
+            return ""
+        return text.strip().lower()
+    
+    def normalize_url(url):
+        if not url:
+            return ""
+        # Remove query parameters and fragments for consistency
+        from urllib.parse import urlparse
+        parsed = urlparse(url.lower())
+        return f"{parsed.scheme}://{parsed.netloc}{parsed.path}".rstrip('/')
+    
+    url_norm = normalize_url(url)
+    title_norm = normalize_text(title)
+    content_norm = normalize_text(content)
+    
+    hash_input = f"website:{url_norm}|{title_norm}|{content_norm}"
+    hash_object = hashlib.sha256(hash_input.encode('utf-8'))
+    return hash_object.hexdigest()[:16]
 
 # =============================================================================
 # 1. HEALTH CHECK ENDPOINT
@@ -452,38 +481,56 @@ async def analyze_website_v2(request: WebsiteAnalysisV2Request):
     }
 
     # [Step 4] Create unique content hash for reusability
-    content_hash = create_content_hash(
-        "website", url=url, title=title, content=content)
+    content_hash = create_website_content_hash(url, title, content)
 
     # [Step 4.5] Check if we already have analysis for this content
-    existing_analysis = await find_analysis_by_hash(content_hash, "website")
-    if existing_analysis:
-        # Return existing analysis if available
-        existing_id = existing_analysis.get('_id')
-        existing_analysis_data = existing_analysis.get('analysis', {})
-
-        # If target language analysis exists, return it
-        if target_language in existing_analysis_data:
-            target_analysis = existing_analysis_data[target_language]
+    existing_analysis = await find_result_by_hash(content_hash)
+    if existing_analysis and existing_analysis.get('content_type') == 'website':
+        # Return existing analysis if available and matches target language
+        existing_result = existing_analysis.get('analysis_result', {})
+        if existing_result:
+            print(f"Returning cached website result for content hash: {content_hash}")
             return resp_200(
                 data={
-                    "risk_level": target_analysis["risk_level"],
-                    "reasons": target_analysis["analysis"],  # Map 'analysis' to 'reasons'
-                    "recommended_action": target_analysis["recommended_action"],
-                    "legitimate_url": target_analysis.get("legitimate_url")
+                    "risk_level": existing_result.get("risk_level"),
+                    "reasons": existing_result.get("analysis"),  # Map 'analysis' to 'reasons'
+                    "recommended_action": existing_result.get("recommended_action"),
+                    "detected_language": existing_result.get("detected_language"),
+                    "legitimate_url": existing_result.get("legitimate_url")
                 }
             )
 
-    # [Step 5] Store URL, title, content, "base language", analysis in "base language" and analysis in "target language" in database
-    document = prepare_website_document(
-        url, title, content, "", metadata, base_language, analysis, signals)
-    document['content_hash'] = content_hash  # Add hash to document
-    document['checker_results'] = checker_results  # Add checker results to document
+    # [Step 5] Prepare extracted data for DynamoDB storage
+    extracted_data = {
+        "url": url,
+        "title": title or "",
+        "content": content or "",
+        "metadata": metadata or {},
+        "signals": signals or {},
+        "checker_results": checker_results or {}
+    }
 
-    # Save to database using centralized function
-    website_id = await save_analysis_to_db(document, "website")
+    # [Step 6] Save detection result to DynamoDB (extracted data + LLM analysis)
+    print(f"Attempting to save website analysis to DynamoDB for content hash: {content_hash}")
+    detection_id = await save_detection_result(
+        content_type="website",
+        content_hash=content_hash,
+        analysis_result=comprehensive_analysis,
+        extracted_data=extracted_data,
+        target_language=target_language
+    )
+    
+    # [Step 6.1] Verify save was successful before returning response
+    if not detection_id or detection_id.startswith('temp_'):
+        print(f"❌ CRITICAL: Failed to save website analysis to DynamoDB! Got ID: {detection_id}")
+        print(f"Content hash: {content_hash}")
+        print(f"URL: {url}")
+        # For now, continue with response (graceful degradation)
+        # In production, you might want to raise an exception here
+    else:
+        print(f"✅ SUCCESS: Saved website analysis to DynamoDB with ID: {detection_id}")
 
-    # [Step 5] Respond analysis in "target language" to user  
+    # [Step 7] Respond analysis in "target language" to user  
     return resp_200(
         data={
             "risk_level": comprehensive_analysis["risk_level"],
