@@ -22,7 +22,7 @@ from typing import Optional, Dict, List, Any
 
 from models.customResponse import resp_200
 from utils.socialmediaUtils import detect_language, analyze_social_media_content, translate_analysis, extract_social_media_signals, analyze_social_media_multimodal_v2, encode_image_to_base64
-from utils.dynamodbUtils import save_detection_result, find_result_by_hash
+from utils.dynamodbUtils import save_detection_result, find_result_by_hash, get_detection_result
 from utils.s3Utils import upload_image_to_s3
 import hashlib
 import base64
@@ -244,14 +244,10 @@ async def analyze_social_media_post_v1(request: SocialMediaAnalysisRequest):
         analysis[target_language] = target_language_analysis
 
     # [Step 4] Create unique content hash for reusability
-    content_hash = create_content_hash("socialmedia",
-                                       platform=platform,
-                                       content=content,
-                                       author_username=author_username,
-                                       post_url=post_url)
+    content_hash = create_socialmedia_content_hash(platform, content, author_username, post_url)
 
     # [Step 4.5] Check if we already have analysis for this content
-    existing_analysis = await find_analysis_by_hash(content_hash, "socialmedia")
+    existing_analysis = await find_result_by_hash(content_hash)
     if existing_analysis:
         # Return existing analysis if available
         existing_id = existing_analysis.get('_id')
@@ -268,15 +264,19 @@ async def analyze_social_media_post_v1(request: SocialMediaAnalysisRequest):
             )
 
     # [Step 5] Store content and analysis in database
-    document = prepare_social_media_document(
-        platform, content, author_username, post_url,
-        author_followers_count, engagement_metrics, base_language, analysis, signals
-    )
-    document['content_hash'] = content_hash  # Add hash to document
-    document['checker_results'] = checker_results  # Add checker results to document
-
+    extracted_data = {
+        "platform": platform,
+        "content": content,
+        "author_username": author_username,
+        "post_url": post_url,
+        "author_followers_count": author_followers_count,
+        "engagement_metrics": engagement_metrics,
+        "signals": signals,
+        "checker_results": checker_results
+    }
+    
     # Save to database using centralized function
-    post_id = await save_analysis_to_db(document, "socialmedia")
+    post_id = await save_detection_result("socialmedia", content_hash, analysis, extracted_data)
 
     # [Step 5] Respond analysis in "target language" to user
     return resp_200(
@@ -343,7 +343,7 @@ async def translate_social_media_analysis_v1(request: SocialMediaTranslationRequ
         raise HTTPException(status_code=400, detail="Invalid request body")
 
     # [Step 1] Get base_language_analysis from database
-    document = await retrieve_analysis_from_db(post_id, "socialmedia")
+    document = await get_detection_result(post_id)
     if not document:
         raise HTTPException(
             status_code=404, detail="Social media post analysis not found in database")

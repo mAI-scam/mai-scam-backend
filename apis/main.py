@@ -13,7 +13,7 @@ ENDPOINTS:
 
 from fastapi import APIRouter, Request, HTTPException, UploadFile, File
 from models.customResponse import resp_200, health_success_response
-from models.clients import get_sea_lion_client, get_mistral_client
+from models.clients import get_sea_lion_client
 from utils.authUtils import authenticate_request
 from setting import Setting
 import json

@@ -75,21 +75,18 @@ def setup_logging() -> None:
         logging.getLogger("openai").setLevel(logging.WARNING)
         logging.getLogger("httpx").setLevel(logging.WARNING)
         logging.getLogger("httpcore").setLevel(logging.WARNING)
-        logging.getLogger("pymongo").setLevel(logging.WARNING)
     elif debug_verbose == 2:  # Normal - some info, no debug
         logging.getLogger("uvicorn").setLevel(logging.WARNING)
         logging.getLogger("fastapi").setLevel(logging.WARNING)
         logging.getLogger("openai").setLevel(logging.WARNING)
         logging.getLogger("httpx").setLevel(logging.WARNING)
         logging.getLogger("httpcore").setLevel(logging.WARNING)
-        logging.getLogger("pymongo").setLevel(logging.WARNING)
     else:  # Verbose (3) - show all logs
         logging.getLogger("uvicorn").setLevel(logging.INFO)
         logging.getLogger("fastapi").setLevel(logging.INFO)
         logging.getLogger("openai").setLevel(logging.INFO)
         logging.getLogger("httpx").setLevel(logging.INFO)
         logging.getLogger("httpcore").setLevel(logging.INFO)
-        logging.getLogger("pymongo").setLevel(logging.INFO)
     
     # Enable debug logging for our modules if debug mode is on
     if debug_mode and debug_verbose >= 2:
@@ -116,7 +113,6 @@ def _setup_app_state(app: FastAPI) -> None:
         "APP_ENV": config.get("APP_ENV", "development"),
         "APP_API_VERSION": config.get("APP_API_VERSION", "1.0.0"),
         "JWT_SECRET_KEY": JWT_SECRET_KEY,
-        "MONGODB_URI": config.get("MONGODB_URI", "mongodb://localhost:27017/maiscam-db"),
         "DEBUG": config.get("DEBUG", "False").lower() == "true"
     }
 

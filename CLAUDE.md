@@ -46,7 +46,6 @@ API endpoints are organized by domain in the `apis/` directory:
 - **`email.py`** - Email spam/scam detection
 - **`socialmedia.py`** - Social media content analysis
 - **`website.py`** - Website analysis
-- **`ocr.py`** - Optical Character Recognition
 
 ### Core Components
 - **`core/`** - Application lifecycle handlers and exception management
@@ -73,9 +72,8 @@ Configuration uses environment-specific YAML files in `env/`:
 The `APP_ENV` environment variable determines which config file to load.
 
 ### AI Integration
-The application integrates with multiple AI services:
+The application integrates with AI services:
 - **Sea-Lion AI** for spam/scam detection with multilingual support
-- **Mistral AI** for OCR text extraction from images
 - **OpenAI** client for additional LLM capabilities
 
 ## Key Development Notes
@@ -95,7 +93,7 @@ Middleware is configured in a specific order in `app.py:setup_middleware()` - ma
 - Comprehensive logging and error handling
 
 ### Database Integration
-Uses MongoDB with PyMongo for data persistence, configured via `MONGODB_URI` environment variable.
+Uses AWS DynamoDB for data persistence, with S3 for image storage.
 
 ### Testing Strategy
 The codebase includes domain-specific test files rather than a unified test framework - run individual test files as needed for specific components.

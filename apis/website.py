@@ -22,7 +22,7 @@ from typing import Optional, Dict, List, Any
 
 from models.customResponse import resp_200
 from utils.websiteUtils import detect_language, analyze_website_content, translate_analysis, extract_website_signals, analyze_website_comprehensive, analyze_website_comprehensive_v2
-from utils.dynamodbUtils import save_detection_result, find_result_by_hash
+from utils.dynamodbUtils import save_detection_result, find_result_by_hash, get_detection_result
 import hashlib
 from utils.checkerUtils import check_url_phishing, check_email_validity, check_phone_number_validity, extract_urls_from_text, extract_emails_from_text, extract_phone_numbers_from_text, check_all_content, format_checker_results_for_llm
 
@@ -234,12 +234,11 @@ async def analyze_website_v1(request: WebsiteAnalysisRequest):
         }
     }
 
-    # [Step 4] Create unique content hash for reusability
-    content_hash = create_content_hash(
-        "website", url=url, title=title, content=content)
+    # [Step 4] Create unique content hash for reusability  
+    content_hash = create_website_content_hash(url, title, content)
 
     # [Step 4.5] Check if we already have analysis for this content
-    existing_analysis = await find_analysis_by_hash(content_hash, "website")
+    existing_analysis = await find_result_by_hash(content_hash)
     if existing_analysis:
         # Return existing analysis if available
         existing_id = existing_analysis.get('_id')
@@ -256,14 +255,18 @@ async def analyze_website_v1(request: WebsiteAnalysisRequest):
             )
 
     # [Step 5] Store website data and analysis in database
-    document = prepare_website_document(
-        url, title, content, screenshot_data, metadata, base_language, analysis, signals
-    )
-    document['content_hash'] = content_hash  # Add hash to document
-    document['checker_results'] = checker_results  # Add checker results to document
-
+    extracted_data = {
+        "url": url,
+        "title": title,
+        "content": content,
+        "screenshot_data": screenshot_data,
+        "metadata": metadata,
+        "signals": signals,
+        "checker_results": checker_results
+    }
+    
     # Save to database using centralized function
-    website_id = await save_analysis_to_db(document, "website")
+    website_id = await save_detection_result("website", content_hash, analysis, extracted_data)
 
     # [Step 5] Respond analysis in "target language" to user
     return resp_200(
@@ -331,8 +334,8 @@ async def translate_website_analysis_v1(request: WebsiteTranslationRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail="Invalid request body")
 
-    # [Step 1] Get base_language_analysis from database
-    document = await retrieve_analysis_from_db(website_id, "website")
+    # [Step 1] Get base_language_analysis from database  
+    document = await get_detection_result(website_id)
     if not document:
         raise HTTPException(
             status_code=404, detail="Website analysis not found in database")
