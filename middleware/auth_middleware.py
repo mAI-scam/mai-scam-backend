@@ -339,18 +339,12 @@ def configure_cors(app):
     """
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "chrome-extension://*",  # Chrome extensions
-            "moz-extension://*",     # Firefox extensions
-            "http://localhost:3000",  # Local development
-            "http://localhost:*",    # All localhost ports
-            "http://127.0.0.1:*",    # All 127.0.0.1 ports
-            "https://your-domain.com"  # Your production domain
-        ],
+        allow_origins=["*"],  # Allow all origins for maximum compatibility
         allow_credentials=True,
-        allow_methods=["*"],  # Allow all methods
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicitly list methods including OPTIONS
         allow_headers=["*"],  # Allow all headers
-        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"  # Regex for local development
+        expose_headers=["*"],  # Expose all headers in response
+        max_age=600,  # Cache preflight for 10 minutes
     )
 
 
