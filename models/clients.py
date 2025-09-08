@@ -71,7 +71,7 @@ class AIClients:
             aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
             aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
             aws_region = os.getenv("AWS_REGION")
-            endpoint_name = os.getenv("SAGEMAKER_ENDPOINT_NAME") or "gemma-sea-lion-v4-27b-it-250905-0016"
+            endpoint_name = os.getenv("SAGEMAKER_ENDPOINT_NAME") or "gemma-sea-lion-v4-27b-it-250908-1230"
             
             if not all([aws_access_key_id, aws_secret_access_key, aws_region]):
                 raise ClientError(
