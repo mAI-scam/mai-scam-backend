@@ -31,6 +31,7 @@ from middleware.auth_middleware import (
     LoggingMiddleware, ErrorHandlingMiddleware, configure_cors
 )
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from mangum import Mangum
 import uvicorn
 import logging
 import os
@@ -117,6 +118,9 @@ def get_application() -> FastAPI:
 
 # Create the application instance
 app = get_application()
+
+# Create Lambda handler
+handler = Mangum(app)
 
 
 def main():
