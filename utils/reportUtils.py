@@ -28,12 +28,21 @@ class EmailReportSender:
     
     def __init__(self):
         self.smtp_host = config.get('SMTP_HOST')
-        self.smtp_port = config.get('SMTP_PORT')
+        self.smtp_port = int(config.get('SMTP_PORT', 587))
         self.smtp_username = config.get('SMTP_USERNAME')
         self.smtp_password = config.get('SMTP_PASSWORD')
-        self.smtp_use_tls = config.get('SMTP_USE_TLS')
-        self.sender_name = config.get('SMTP_SENDER_NAME')
+        smtp_use_tls = config.get('SMTP_USE_TLS', True)
+        self.smtp_use_tls = smtp_use_tls if isinstance(smtp_use_tls, bool) else str(smtp_use_tls).lower() == 'true'
+        self.sender_name = config.get('SMTP_SENDER_NAME', 'MAI Scam Detection')
         self.report_email = config.get('REPORT_EMAIL')
+        
+        # Validate required SMTP configuration
+        if not all([self.smtp_host, self.smtp_username, self.smtp_password, self.report_email]):
+            logger.error("Missing required SMTP configuration values")
+            logger.error(f"SMTP_HOST: {self.smtp_host}")
+            logger.error(f"SMTP_USERNAME: {self.smtp_username}")
+            logger.error(f"SMTP_PASSWORD: {'***' if self.smtp_password else None}")
+            logger.error(f"REPORT_EMAIL: {self.report_email}")
 
     async def send_scam_report(self, scam_type: str, report_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -307,6 +316,11 @@ MAI Scam Detection Team
     async def _send_email(self, subject: str, body: str, report_id: str) -> bool:
         """Send email using SMTP"""
         try:
+            # Validate configuration before attempting to send
+            if not all([self.smtp_host, self.smtp_username, self.smtp_password, self.report_email]):
+                logger.error(f"SMTP configuration incomplete for report {report_id}")
+                return False
+            
             # Create message
             message = MIMEMultipart()
             message["From"] = f"{self.sender_name} <{self.smtp_username}>"
@@ -320,22 +334,32 @@ MAI Scam Detection Team
             context = ssl.create_default_context()
             
             # Create SMTP session
+            logger.info(f"Connecting to SMTP server {self.smtp_host}:{self.smtp_port}")
             server = smtplib.SMTP(self.smtp_host, self.smtp_port)
             
             if self.smtp_use_tls:
+                logger.info("Starting TLS connection")
                 server.starttls(context=context)  # Enable TLS security with context
                 
             # Login with sender's email and password
+            logger.info("Authenticating with SMTP server")
             server.login(self.smtp_username, self.smtp_password)
             
             # Send email
             text = message.as_string()
+            logger.info(f"Sending email to {self.report_email}")
             server.sendmail(self.smtp_username, self.report_email, text)
             server.quit()
             
             logger.info(f"Email sent successfully for report: {report_id}")
             return True
             
+        except smtplib.SMTPAuthenticationError as e:
+            logger.error(f"SMTP Authentication failed for report {report_id}: {str(e)}")
+            return False
+        except smtplib.SMTPConnectError as e:
+            logger.error(f"SMTP Connection failed for report {report_id}: {str(e)}")
+            return False
         except Exception as e:
             logger.error(f"Failed to send email for report {report_id}: {str(e)}")
             return False
