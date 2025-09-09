@@ -1,6 +1,8 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
+import * as integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { ManagedPolicy } from 'aws-cdk-lib/aws-iam';
 
 export class CdkInfraStack extends cdk.Stack {
@@ -30,9 +32,9 @@ export class CdkInfraStack extends cdk.Stack {
       },
     });
 
-    // Public URL for the API function.
-    const functionUrl = apiFunction.addFunctionUrl({
-      authType: lambda.FunctionUrlAuthType.NONE,
+    // API Gateway HTTP API
+    const api = new apigatewayv2.HttpApi(this, 'HttpApi', {
+      defaultIntegration: new integrations.HttpLambdaIntegration('DefaultIntegration', apiFunction)
     });
 
     // Grant permissions for all resources to work together.
@@ -49,9 +51,9 @@ export class CdkInfraStack extends cdk.Stack {
       ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess')
     );
 
-    // Output the URL for the API function.
-    new cdk.CfnOutput(this, 'FunctionUrl', {
-      value: functionUrl.url,
+    // Output the URL for the API Gateway.
+    new cdk.CfnOutput(this, 'ApiGatewayUrl', {
+      value: api.url!,
     });
   }
 }
