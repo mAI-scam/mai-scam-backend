@@ -6,12 +6,22 @@ from dotenv import load_dotenv
 
 
 def Setting() -> dict:
-    # Step 1: Load environment variables from .env file (always override existing values)
-    load_dotenv(override=True)
+    # Step 1: Load environment variables from .env file (don't override in Lambda)
+    # In Lambda, prefer Lambda environment variables over .env file
+    is_lambda = os.getenv('AWS_LAMBDA_FUNCTION_NAME') is not None
+    load_dotenv(override=not is_lambda)
     
     # Step 2: Determine environment
     env_name = os.getenv("APP_ENV", "uat").lower()
     config_path = Path(__file__).resolve().parent / "env" / f"{env_name}.yaml"
+
+    # Debug logging
+    print(f"DEBUG: AWS_LAMBDA_FUNCTION_NAME = {os.getenv('AWS_LAMBDA_FUNCTION_NAME')}")
+    print(f"DEBUG: is_lambda = {is_lambda}")
+    print(f"DEBUG: APP_ENV = {os.getenv('APP_ENV')}")
+    print(f"DEBUG: env_name = {env_name}")
+    print(f"DEBUG: config_path = {config_path}")
+    print(f"DEBUG: config_path.exists() = {config_path.exists()}")
 
     # Step 3: Load YAML if it exists
     config = {}
@@ -24,6 +34,9 @@ def Setting() -> dict:
         
         # Step 5: Parse the substituted YAML
         config = yaml.safe_load(yaml_content)
+        print(f"DEBUG: Loaded config with SMTP_HOST = {config.get('SMTP_HOST')}")
+    else:
+        print(f"DEBUG: Config file not found at {config_path}")
 
     return config
 

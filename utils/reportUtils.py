@@ -27,14 +27,17 @@ class EmailReportSender:
     """
     
     def __init__(self):
-        self.smtp_host = config.get('SMTP_HOST')
-        self.smtp_port = int(config.get('SMTP_PORT', 587))
-        self.smtp_username = config.get('SMTP_USERNAME')
-        self.smtp_password = config.get('SMTP_PASSWORD')
-        smtp_use_tls = config.get('SMTP_USE_TLS', True)
+        import os
+        # Try environment variables first (for Lambda), then fall back to config
+        self.smtp_host = os.getenv('SMTP_HOST') or config.get('SMTP_HOST')
+        self.smtp_port = int(os.getenv('SMTP_PORT', config.get('SMTP_PORT', 587)))
+        self.smtp_username = os.getenv('SMTP_USERNAME') or config.get('SMTP_USERNAME')
+        self.smtp_password = os.getenv('SMTP_PASSWORD') or config.get('SMTP_PASSWORD')
+        smtp_use_tls_env = os.getenv('SMTP_USE_TLS')
+        smtp_use_tls = smtp_use_tls_env if smtp_use_tls_env else config.get('SMTP_USE_TLS', True)
         self.smtp_use_tls = smtp_use_tls if isinstance(smtp_use_tls, bool) else str(smtp_use_tls).lower() == 'true'
-        self.sender_name = config.get('SMTP_SENDER_NAME', 'MAI Scam Detection')
-        self.report_email = config.get('REPORT_EMAIL')
+        self.sender_name = os.getenv('SMTP_SENDER_NAME') or config.get('SMTP_SENDER_NAME', 'MAI Scam Detection')
+        self.report_email = os.getenv('REPORT_EMAIL') or config.get('REPORT_EMAIL')
         
         # Validate required SMTP configuration
         if not all([self.smtp_host, self.smtp_username, self.smtp_password, self.report_email]):
@@ -317,8 +320,17 @@ MAI Scam Detection Team
         """Send email using SMTP"""
         try:
             # Validate configuration before attempting to send
+            logger.info(f"SMTP Configuration for report {report_id}:")
+            logger.info(f"SMTP_HOST: {self.smtp_host}")
+            logger.info(f"SMTP_PORT: {self.smtp_port}")
+            logger.info(f"SMTP_USERNAME: {self.smtp_username}")
+            logger.info(f"SMTP_PASSWORD: {'***' if self.smtp_password else 'MISSING'}")
+            logger.info(f"SMTP_USE_TLS: {self.smtp_use_tls}")
+            logger.info(f"REPORT_EMAIL: {self.report_email}")
+            
             if not all([self.smtp_host, self.smtp_username, self.smtp_password, self.report_email]):
                 logger.error(f"SMTP configuration incomplete for report {report_id}")
+                logger.error(f"Missing values - HOST: {not self.smtp_host}, USER: {not self.smtp_username}, PASS: {not self.smtp_password}, REPORT_EMAIL: {not self.report_email}")
                 return False
             
             # Create message
