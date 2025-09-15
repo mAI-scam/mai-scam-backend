@@ -65,7 +65,7 @@ Consider red flags: phishing pages, fake login forms, counterfeit product sites,
 
 [SCORING RULES]
 - "high": clear scam indicators (e.g., phishing login form, counterfeit products, fake government site, suspicious investment scheme).
-- "medium": some suspicious cues but not conclusive (poor design, minor inconsistencies, suspicious domain age).
+- "medium": some suspicious cues but not conclusive (poor design, minor inconsistencies, suspicious domain patterns).
 - "low": legitimate website, no meaningful red flags.
 
 [OUTPUT FORMAT]

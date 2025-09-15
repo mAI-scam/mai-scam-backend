@@ -25,7 +25,7 @@ signals = extract_website_signals(
     title="Secure Banking Login",
     content="Enter your credentials to access your account...",
     screenshot_data="base64_encoded_screenshot",
-    metadata={"ssl_valid": True, "domain_age_days": 5}
+    metadata={"ssl": {"isSecure": True, "protocol": "https:"}}
 )
 
 # Analyze website content
@@ -48,7 +48,7 @@ translated = await translate_analysis(
 from utils.constant import (
     LANGUAGES, URL_PATTERN, EMAIL_PATTERN, PHONE_PATTERN,
     SUSPICIOUS_TLDS, URL_SHORTENERS, KNOWN_BRANDS, WEBSITE_KEYWORDS,
-    NEW_DOMAIN_THRESHOLD_DAYS, MIN_PHONE_LENGTH, MAX_HYPHENS_IN_DOMAIN,
+    MIN_PHONE_LENGTH, MAX_HYPHENS_IN_DOMAIN,
     RANDOM_SUBDOMAIN_PATTERN, SUSPICIOUS_PATH_KEYWORDS
 )
 from utils.llmUtils import parse_sealion_json, call_sea_lion_llm, call_sea_lion_v4_llm, call_sagemaker_sealion_llm, parse_sagemaker_json
@@ -245,7 +245,7 @@ def extract_website_signals(url: str, title: str = "", content: str = "",
         title: Page title
         content: Page content
         screenshot_data: Base64 encoded screenshot (optional)
-        metadata: Website metadata including SSL info, domain age (optional)
+        metadata: Website metadata including SSL info from frontend (optional)
 
     Returns:
         dict: Structured signal data with the following keys:
@@ -264,7 +264,7 @@ def extract_website_signals(url: str, title: str = "", content: str = "",
             title="Secure Banking Login",
             content="Enter your credentials to access your account...",
             screenshot_data="base64_encoded_screenshot",
-            metadata={"ssl_valid": True, "domain_age_days": 5}
+            metadata={"ssl": {"isSecure": True, "protocol": "https:"}}
         )
     """
     # Extract text-based signals
@@ -288,14 +288,16 @@ def extract_website_signals(url: str, title: str = "", content: str = "",
     for category, keyword_list in WEBSITE_KEYWORDS.items():
         keywords[category] = any(k in text_for_analysis for k in keyword_list)
 
-    # SSL and security analysis
+    # SSL and security analysis - only use frontend-available data
     ssl_signals = {}
     if metadata:
+        # Check if HTTPS is used (frontend can detect this)
+        ssl_info = metadata.get("ssl", {})
         ssl_signals = {
-            "has_ssl": metadata.get("ssl_valid", False),
-            "ssl_expired": metadata.get("ssl_expired", False),
-            "domain_age_days": metadata.get("domain_age_days", 0),
-            "is_new_domain": metadata.get("domain_age_days", 0) < NEW_DOMAIN_THRESHOLD_DAYS,
+            "has_ssl": ssl_info.get("isSecure", False),
+            # Remove ssl_expired since frontend cannot verify certificate validity
+            # Remove domain_age_days since frontend cannot access WHOIS data
+            # Remove is_new_domain since it depends on domain_age_days
         }
 
     # Form detection (basic heuristic)

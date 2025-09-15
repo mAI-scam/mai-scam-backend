@@ -9,10 +9,10 @@
         "target_language": "en",
         "screenshot_data": "base64_encoded_screenshot_data_here",
         "metadata": {
-          "ssl_valid": false,
-          "ssl_expired": true,
-          "domain_age_days": 15,
-          "is_new_domain": true
+          "ssl": {
+            "isSecure": false,
+            "protocol": "http:"
+          }
         }
       },
       "ground_truth_risk": "high"
@@ -26,10 +26,10 @@
         "target_language": "en",
         "screenshot_data": "base64_encoded_screenshot_data_here",
         "metadata": {
-          "ssl_valid": true,
-          "ssl_expired": false,
-          "domain_age_days": 10,
-          "is_new_domain": true
+          "ssl": {
+            "isSecure": true,
+            "protocol": "https:"
+          }
         }
       },
       "ground_truth_risk": "medium"
@@ -43,10 +43,10 @@
         "target_language": "zh",
         "screenshot_data": null,
         "metadata": {
-          "ssl_valid": true,
-          "ssl_expired": false,
-          "domain_age_days": 10950,
-          "is_new_domain": false
+          "ssl": {
+            "isSecure": true,
+            "protocol": "https:"
+          }
         }
       },
       "ground_truth_risk": "low"
