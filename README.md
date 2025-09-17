@@ -1,6 +1,6 @@
 # 🛡️ MAI Scam Detection API
 
-**AI-powered scam detection system leveraging SEA-LION models for multilingual fraud prevention across Gmail, Facebook, and websites.**
+**AI-powered scam detection system leveraging SEA-LION models for multilingual fraud prevention across Gmail, Facebook, Twitter/X, and websites.**
 
 [![Pan-SEA AI Developer Challenge 2025](https://img.shields.io/badge/Pan--SEA%20AI-Developer%20Challenge%202025-blue)](https://pan-sea-ai-challenge.com)
 [![SEA-LION v4](https://img.shields.io/badge/SEA--LION-v4%20Powered-green)](https://aisingapore.org/sea-lion/)
@@ -30,9 +30,11 @@ This demonstrates our production-ready implementation and allows for immediate e
 
 ### 🔍 Real-World Applications
 - **Gmail Protection**: Advanced email scam detection with content analysis
-- **Facebook Security**: Multimodal social media post analysis with image recognition
+- **Social Media Security**: Multimodal analysis for Facebook and Twitter/X posts with image recognition
 - **Website Validation**: Real-time phishing and fraud website detection
 - **AWS Lambda Deployment**: Already deployed and running in production
+
+> **Note**: For first-time usage, the deployed lambda may take 30-60 seconds to warm up and load the models. Subsequent requests will be much faster.
 
 ---
 
@@ -45,7 +47,8 @@ This demonstrates our production-ready implementation and allows for immediate e
 - Automated scam reporting via SMTP
 - Risk assessment: High/Medium/Low with detailed explanations
 
-### 📱 Facebook Post Analysis
+### 📱 Social Media Post Analysis
+- **Facebook & Twitter/X Support**: Comprehensive analysis across major social platforms
 - Multimodal analysis (text + images) via SEA-LION v4
 - Engagement metrics evaluation
 - Author credibility assessment
@@ -125,12 +128,12 @@ curl -X POST "http://localhost:8000/email/v2/analyze" \
   }'
 ```
 
-### 📱 Facebook Post Analysis (with Image)
+### 📱 Social Media Post Analysis (Facebook/Twitter)
 ```bash
 curl -X POST "http://localhost:8000/socialmedia/v2/analyze" \
   -H "Content-Type: application/json" \
   -d '{
-    "platform": "facebook",
+    "platform": "twitter",
     "content": "Easy money! Join our investment group!",
     "author_username": "fake_investor",
     "target_language": "en",
